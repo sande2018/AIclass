@@ -1,0 +1,296 @@
+{% extends "base.html" %}
+
+{% block title %}购买课程 - {{ course.title }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">购买课程</h4>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex mb-4">
+                        <img src="{{ course.image }}" alt="{{ course.title }}" class="img-fluid rounded" style="width: 120px; height: 90px; object-fit: cover;">
+                        <div class="ms-3">
+                            <h5 class="card-title">{{ course.title }}</h5>
+                            <p class="card-text text-muted">{{ course.instructor }}</p>
+                            <div class="d-flex align-items-center">
+                                <span class="fs-4 fw-bold text-primary">¥{{ course.price }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <div id="purchase-form">
+                        {% if session.user_id %}
+                            <!-- 已登录用户直接显示支付按钮 -->
+                            <div class="text-center">
+                                <p class="mb-4">您已登录，点击下方按钮完成支付</p>
+                                <button id="pay-button" class="btn btn-primary btn-lg" onclick="createPayment({{ course.id }}, null)">
+                                    <i class="bi bi-credit-card me-2"></i>立即支付
+                                </button>
+                            </div>
+                        {% else %}
+                            <!-- 未登录用户需要填写信息 -->
+                            <div class="mb-4">
+                                <h5>请填写您的信息</h5>
+                                <p class="text-muted small">完成支付后，系统将自动为您创建账号</p>
+                            </div>
+                            <div class="mb-3">
+                                <label for="username" class="form-label">姓名</label>
+                                <input type="text" class="form-control" id="username" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="phone" class="form-label">手机号</label>
+                                <input type="tel" class="form-control" id="phone" required>
+                                <div class="form-text">将作为您的登录账号，密码默认为手机号后6位</div>
+                            </div>
+                            <div class="text-center mt-4">
+                                <button id="pay-button" class="btn btn-primary btn-lg" onclick="createTempUserAndPay()">
+                                    <i class="bi bi-credit-card me-2"></i>立即支付
+                                </button>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- 支付二维码区域 -->
+                    <div id="payment-qrcode" class="text-center py-4" style="display: none;">
+                        <h5 class="mb-3">请使用微信扫码支付</h5>
+                        <div id="qrcode-container" style="display: flex; justify-content: center; align-items: center; min-height: 200px;" class="mb-3"></div>
+                        <p class="text-muted small">支付完成后，课程将自动添加到您的账户</p>
+                        <div id="countdown" class="mb-3"></div>
+                        <button class="btn btn-outline-secondary mt-2" onclick="cancelPayment()">
+                            <i class="bi bi-x-circle me-2"></i>取消支付
+                        </button>
+                    </div>
+                </div>
+                <div class="card-footer bg-light">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <a href="{{ url_for('courses') }}" class="text-decoration-none">
+                            <i class="bi bi-arrow-left me-1"></i>返回课程列表
+                        </a>
+                        <a href="{{ url_for('redeem') }}" class="text-decoration-none">
+                            <i class="bi bi-gift me-1"></i>使用兑换码
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 引入QRCode.js -->
+<script src="https://cdn.bootcdn.net/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<script>
+    // 检测是否为移动设备
+    function isMobileDevice() {
+        return (window.innerWidth <= 768) ||
+               /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    }
+
+    // 创建临时用户并支付
+    function createTempUserAndPay() {
+        const username = document.getElementById('username').value;
+        const phone = document.getElementById('phone').value;
+
+        if (!username || !phone) {
+            alert('请填写完整信息');
+            return;
+        }
+
+        // 验证手机号格式
+        if (!/^1\d{10}$/.test(phone)) {
+            alert('请输入正确的手机号');
+            return;
+        }
+
+        // 创建临时用户
+        fetch('/api/create_temp_user', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                username: username,
+                phone: phone,
+                course_id: {{ course.id }}
+            }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // 创建用户成功，继续创建支付
+                createPayment({{ course.id }}, data.user_id);
+            } else {
+                alert(data.message || '创建用户失败，请重试');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('创建用户失败，请重试');
+        });
+    }
+
+    // 创建支付
+    function createPayment(courseId, userId) {
+        // 禁用支付按钮
+        document.getElementById('pay-button').disabled = true;
+
+        console.log('创建支付请求:', { course_id: courseId, user_id: userId });
+
+        fetch('/api/create_payment', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                course_id: courseId,
+                user_id: userId
+            }),
+        })
+        .then(response => {
+            console.log('支付请求响应状态:', response.status);
+            return response.json();
+        })
+        .then(data => {
+            console.log('支付请求响应数据:', data);
+            if (data.success) {
+                // 检查是否为移动设备
+                if (isMobileDevice()) {
+                    // 如果是移动设备，直接跳转到支付链接
+                    console.log('检测到移动设备，直接跳转到支付链接');
+                    window.location.href = data.payment_url;
+                    return;
+                }
+
+                // 桌面设备显示支付二维码
+                document.getElementById('purchase-form').style.display = 'none';
+                document.getElementById('payment-qrcode').style.display = 'inline';
+
+                // 生成二维码
+                const qrcodeContainer = document.getElementById('qrcode-container');
+                qrcodeContainer.innerHTML = '';
+                new QRCode(qrcodeContainer, {
+                    text: data.payment_url,
+                    width: 200,
+                    height: 200,
+                    colorDark: "#000000",
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+
+                // 开始轮询支付状态
+                pollPaymentStatus(data.order_id);
+
+                // 启动25分钟倒计时
+                startCountdown(25);
+            } else {
+                console.error('创建支付失败:', data.message);
+                alert(data.message || '创建支付失败，请重试');
+                document.getElementById('pay-button').disabled = false;
+            }
+        })
+        .catch(error => {
+            console.error('支付请求错误:', error);
+            alert('创建支付失败，请重试');
+            document.getElementById('pay-button').disabled = false;
+        });
+    }
+
+    // 取消支付
+    function cancelPayment() {
+        document.getElementById('payment-qrcode').style.display = 'none';
+        document.getElementById('purchase-form').style.display = 'inline';
+        document.getElementById('pay-button').disabled = false;
+    }
+</script>
+<script>
+    // 支付状态轮询
+    function pollPaymentStatus(orderId) {
+        console.log("开始轮询支付状态，订单ID:", orderId);
+
+        // 每隔3秒查询一次支付状态
+        const pollInterval = setInterval(function () {
+            fetch(`/api/check_payment_status/${orderId}`)
+                .then(response => response.json())
+                .then(data => {
+                    console.log("支付状态查询结果:", data);
+                    if (data.success && data.status === "completed") {
+                        // 如果支付成功
+                        clearInterval(pollInterval); // 停止轮询
+                        alert("支付成功！课程已添加到您的账户。");
+                        window.location.href = "{{ url_for('dashboard') }}";
+                    } else if (data.status === "failed") {
+                        // 如果支付超时
+                        clearInterval(pollInterval); // 停止轮询
+                        alert("订单超时，请重新发起支付。");
+                        handlePaymentTimeout();
+                    }
+                })
+                .catch(error => {
+                    console.error("支付状态查询失败:", error);
+                });
+        }, 3000); // 每3秒查询一次
+
+        // 存储轮询间隔ID，以便在需要时清除
+        window.paymentPollInterval = pollInterval;
+    }
+
+    // 倒计时功能
+    function startCountdown(minutes) {
+        let time = minutes * 60; // 转换为秒
+        const countdownElement = document.getElementById('countdown');
+        const payButton = document.getElementById('pay-button');
+        const paymentInstruction = document.querySelector('#purchase-form p.mb-4');
+
+        const countdownInterval = setInterval(() => {
+            time--;
+            const minutes = Math.floor(time / 60);
+            const seconds = time % 60;
+
+            countdownElement.innerHTML = `支付倒计时：<span class="fw-bold">${minutes}:${seconds < 10 ? '0' + seconds : seconds}</span>`;
+
+            if (time <= 0) {
+                clearInterval(countdownInterval);
+                // 清除支付状态轮询
+                if (window.paymentPollInterval) {
+                    clearInterval(window.paymentPollInterval);
+                }
+                cancelPayment();
+                payButton.disabled = false;
+                payButton.textContent = '继续支付';
+                if (paymentInstruction) {
+                    paymentInstruction.textContent = '支付超时，点击下面按钮可重新发起支付';
+                }
+            }
+        }, 1000);
+
+        // 存储倒计时间隔ID，以便在需要时清除
+        window.countdownInterval = countdownInterval;
+    }
+
+    // 处理支付超时的函数
+    function handlePaymentTimeout() {
+        // 清除倒计时
+        if (window.countdownInterval) {
+            clearInterval(window.countdownInterval);
+        }
+
+        cancelPayment();
+        const payButton = document.getElementById('pay-button');
+        payButton.disabled = false;
+        payButton.textContent = '继续支付';
+
+        const paymentInstruction = document.querySelector('#purchase-form p.mb-4');
+        if (paymentInstruction) {
+            paymentInstruction.textContent = '支付超时，点击下面按钮可重新发起支付';
+        }
+    }
+</script>
+
+{% endblock %}
+

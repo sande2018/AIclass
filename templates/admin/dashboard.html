@@ -1,0 +1,163 @@
+{% extends 'admin/base.html' %}
+
+{% block title %}控制面板 - 管理后台{% endblock %}
+{% block page_title %}控制面板{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-3 mb-4">
+        <div class="card text-white bg-primary">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title">用户总数</h5>
+                        <h2 class="mb-0">{{ stats.user_count }}</h2>
+                    </div>
+                    <i class="bi bi-people fs-1"></i>
+                </div>
+            </div>
+            <div class="card-footer d-flex align-items-center justify-content-between">
+                <a href="{{ url_for('admin_users') }}" class="text-white text-decoration-none">查看详情</a>
+                <i class="bi bi-chevron-right"></i>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-4">
+        <div class="card text-white bg-success">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title">课程总数</h5>
+                        <h2 class="mb-0">{{ stats.course_count }}</h2>
+                    </div>
+                    <i class="bi bi-book fs-1"></i>
+                </div>
+            </div>
+            <div class="card-footer d-flex align-items-center justify-content-between">
+                <a href="{{ url_for('admin_courses') }}" class="text-white text-decoration-none">查看详情</a>
+                <i class="bi bi-chevron-right"></i>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-4">
+        <div class="card text-white bg-info">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title">选课总数</h5>
+                        <h2 class="mb-0">{{ stats.enrollment_count }}</h2>
+                    </div>
+                    <i class="bi bi-person-check fs-1"></i>
+                </div>
+            </div>
+            <div class="card-footer d-flex align-items-center justify-content-between">
+                <a href="{{ url_for('admin_enrollments') }}" class="text-white text-decoration-none">查看详情</a>
+                <i class="bi bi-chevron-right"></i>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-4">
+        <div class="card text-white bg-warning">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title">今日活跃用户</h5>
+                        <h2 class="mb-0">{{ stats.active_users_today }}</h2>
+                    </div>
+                    <i class="bi bi-person-fill-check fs-1"></i>
+                </div>
+            </div>
+            <div class="card-footer d-flex align-items-center justify-content-between">
+                <a href="#" class="text-white text-decoration-none">查看详情</a>
+                <i class="bi bi-chevron-right"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">最近选课情况</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>用户</th>
+                                <th>课程</th>
+                                <th>注册时间</th>
+                                <th>状态</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for enrollment in recent_enrollments %}
+                            <tr>
+                                <td>{{ enrollment.student.username }}</td>
+                                <td>{{ enrollment.course.title }}</td>
+                                <td>{{ enrollment.enrollment_date.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td>
+                                    <span class="badge bg-success">已激活</span>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center">暂无选课记录</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">热门课程</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    {% for course in popular_courses %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        {{ course.title }}
+                        <span class="badge bg-primary rounded-pill">{{ course.enrollment_count }}</span>
+                    </li>
+                    {% else %}
+                    <li class="list-group-item text-center">暂无数据</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">系统信息</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>系统版本</span>
+                        <span>v1.0.0</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>数据库状态</span>
+                        <span class="text-success">正常</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>最后更新</span>
+                        <span>{{ now.strftime('%Y-%m-%d %H:%M') }}</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

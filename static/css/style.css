@@ -1,0 +1,215 @@
+/* 全局样式 */
+:root {
+  --primary-color: #4361ee;
+  --secondary-color: #3f37c9;
+  --success-color: #4cc9f0;
+  --info-color: #4895ef;
+  --warning-color: #f72585;
+  --danger-color: #e63946;
+  --light-color: #f8f9fa;
+  --dark-color: #212529;
+}
+
+body {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  color: #333;
+  line-height: 1.6;
+  background-color: #f8f9fa;
+}
+
+/* 导航栏样式 */
+.navbar {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.navbar-brand {
+  font-weight: 700;
+  font-size: 1.5rem;
+}
+
+/* 卡片样式 */
+.card {
+  border: none;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  overflow: hidden;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.card-img-top {
+  height: 180px;
+  object-fit: cover;
+}
+
+/* 按钮样式 */
+.btn {
+  border-radius: 4px;
+  padding: 0.5rem 1.5rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.btn-primary {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.btn-primary:hover {
+  background-color: var(--secondary-color);
+  border-color: var(--secondary-color);
+}
+
+/* 表单样式 */
+.form-control {
+  border-radius: 4px;
+  padding: 0.75rem 1rem;
+}
+
+.form-control:focus {
+  box-shadow: 0 0 0 0.25rem rgba(67, 97, 238, 0.25);
+  border-color: var(--primary-color);
+}
+
+/* 页脚样式 */
+footer {
+  margin-top: auto;
+}
+
+footer a {
+  text-decoration: none;
+}
+
+footer a:hover {
+  text-decoration: underline;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .card-img-top {
+    height: 160px;
+  }
+
+  .display-4 {
+    font-size: 2.5rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .btn {
+    padding: 0.5rem 1rem;
+  }
+
+  .display-4 {
+    font-size: 2rem;
+  }
+}
+
+/* Add these responsive styles at the end of the file */
+
+/* 课程内容页面响应式样式 */
+@media (max-width: 992px) {
+  /* 在移动设备上调整课程内容布局 */
+  .course-content h3 {
+    font-size: 1.5rem;
+  }
+
+  /* 确保视频容器在小屏幕上正确显示 */
+  .video-container {
+    margin-left: -15px;
+    margin-right: -15px;
+    border-radius: 0;
+  }
+
+  /* 调整评论区域在移动设备上的显示 */
+  .comment {
+    padding: 0.75rem !important;
+  }
+
+  /* 在移动设备上调整导航按钮 */
+  .navigation-buttons .btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+  }
+
+  /* 在移动设备上调整课程目录 */
+  #course-sections .list-group-item {
+    padding: 0.75rem 1rem;
+  }
+}
+
+/* 在小屏幕设备上进一步优化 */
+@media (max-width: 576px) {
+  /* 在超小屏幕上调整课程内容 */
+  .course-content h3 {
+    font-size: 1.25rem;
+  }
+
+  /* 调整导航按钮在超小屏幕上的显示 */
+  .navigation-buttons {
+    flex-direction: column;
+  }
+
+  .navigation-buttons .btn {
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
+
+  /* 调整评论区域在超小屏幕上的显示 */
+  .comments-section .d-flex {
+    flex-direction: column;
+    align-items: flex-start !important;
+  }
+
+  .comments-section .d-flex small {
+    margin-top: 0.25rem;
+  }
+}
+
+/* 评论和回复样式 */
+.comment {
+  transition: background-color 0.2s ease;
+}
+
+.comment:hover {
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+.reply {
+  border-color: var(--primary-color) !important;
+  background-color: rgba(67, 97, 238, 0.03);
+  transition: background-color 0.2s ease;
+}
+
+.reply:hover {
+  background-color: rgba(67, 97, 238, 0.06);
+}
+
+.reply-btn {
+  color: var(--primary-color);
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+}
+
+.reply-btn:hover {
+  color: var(--secondary-color);
+  text-decoration: underline;
+}
+
+.delete-comment-btn,
+.delete-reply-btn {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+}
+
+/* 章节完成状态图标 */
+.bi-check-circle-fill.text-success {
+  color: var(--success-color) !important;
+}
+
+.bi-circle.text-muted {
+  opacity: 0.5;
+}
+

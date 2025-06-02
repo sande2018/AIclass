@@ -1,0 +1,143 @@
+{% extends "admin/base.html" %}
+
+{% block title %}文章分类管理{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h3 mb-4 text-gray-800">文章分类管理</h1>
+    
+    <div class="row">
+        <!-- 分类列表 -->
+        <div class="col-md-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">分类列表</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>名称</th>
+                                    <th>文章数</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for category in categories %}
+                                <tr>
+                                    <td>{{ category.id }}</td>
+                                    <td>{{ category.name }}</td>
+                                    <td>{{ category.articles|length }}</td>
+                                    <td>
+                                        <button type="button" class="btn btn-primary btn-sm edit-category" 
+                                                data-id="{{ category.id }}" 
+                                                data-name="{{ category.name }}">
+                                            <i class="fas fa-edit"></i> 编辑
+                                        </button>
+                                        <button type="button" class="btn btn-danger btn-sm" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#deleteModal{{ category.id }}">
+                                            <i class="fas fa-trash"></i> 删除
+                                        </button>
+                                        
+                                        <!-- 删除确认模态框 -->
+                                        <div class="modal fade" id="deleteModal{{ category.id }}" tabindex="-1" aria-labelledby="deleteModalLabel{{ category.id }}" aria-hidden="true">
+                                            <div class="modal-dialog">
+                                                <div class="modal-content">
+                                                    <div class="modal-header">
+                                                        <h5 class="modal-title" id="deleteModalLabel{{ category.id }}">确认删除</h5>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                    </div>
+                                                    <div class="modal-body">
+                                                        确定要删除分类 "{{ category.name }}" 吗？
+                                                        {% if category.articles|length > 0 %}
+                                                        <div class="alert alert-warning mt-3">
+                                                            此分类下有 {{ category.articles|length }} 篇文章，删除分类可能会影响这些文章。
+                                                        </div>
+                                                        {% endif %}
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                                                        <form action="{{ url_for('article.admin_article_categories') }}" method="post">
+                                                            <input type="hidden" name="action" value="delete">
+                                                            <input type="hidden" name="category_id" value="{{ category.id }}">
+                                                            <button type="submit" class="btn btn-danger">确认删除</button>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-center">暂无分类</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 添加/编辑分类 -->
+        <div class="col-md-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary" id="form-title">添加分类</h6>
+                </div>
+                <div class="card-body">
+                    <form action="{{ url_for('article.admin_article_categories') }}" method="post" id="category-form">
+                        <input type="hidden" name="action" value="add" id="form-action">
+                        <input type="hidden" name="category_id" value="" id="category-id">
+                        
+                        <div class="mb-3">
+                            <label for="name" class="form-label">分类名称</label>
+                            <input type="text" class="form-control" id="name" name="name" required>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary" id="submit-btn">添加</button>
+                            <button type="button" class="btn btn-secondary d-none" id="cancel-btn">取消</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+    $(document).ready(function() {
+        // 编辑分类
+        $('.edit-category').click(function() {
+            const id = $(this).data('id');
+            const name = $(this).data('name');
+            
+            $('#form-title').text('编辑分类');
+            $('#form-action').val('edit');
+            $('#category-id').val(id);
+            $('#name').val(name);
+            $('#submit-btn').text('更新');
+            $('#cancel-btn').removeClass('d-none');
+        });
+        
+        // 取消编辑
+        $('#cancel-btn').click(function() {
+            $('#form-title').text('添加分类');
+            $('#form-action').val('add');
+            $('#category-id').val('');
+            $('#name').val('');
+            $('#submit-btn').text('添加');
+            $(this).addClass('d-none');
+        });
+    });
+</script>
+{% endblock %}
+

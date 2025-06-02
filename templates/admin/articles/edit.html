@@ -1,0 +1,448 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block head %}
+{{ super() }}
+<style>
+    .select2-container--default .select2-selection--multiple {
+        border: 1px solid #ced4da;
+        min-height: 38px;
+    }
+
+    /* 封面图预览 */
+    #cover-preview img {
+        max-height: 200px;
+        width: auto;
+    }
+
+    /* wangEditor 仿腾讯文档样式 */
+    #editor—wrapper {
+        border: 1px solid #e8e8e8;
+        border-radius: 4px;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    #toolbar-container {
+        padding: 10px;
+        background-color: #f8f8f8;
+        border-bottom: 1px solid #e8e8e8;
+    }
+
+    #editor-container {
+        height: 400px;
+        padding: 15px;
+        background-color: #fff;
+    }
+
+    /* HTML编辑器样式 */
+    #html-editor {
+        width: 100%;
+        min-height: 700px;
+        font-family: monospace;
+        padding: 15px;
+        line-height: 1.5;
+        tab-size: 4;
+        white-space: pre-wrap;
+        border: 1px solid #e8e8e8;
+        border-radius: 4px;
+        font-size: 14px;
+        resize: vertical;
+        overflow: auto;
+    }
+
+    .wangeditor-menu {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .wangeditor-menu-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 5px;
+        font-size: 12px;
+        color: #666;
+    }
+
+    .wangeditor-menu-item:hover {
+        color: #1890ff;
+    }
+
+    .wangeditor-menu-item-icon {
+        font-size: 18px;
+        margin-bottom: 3px;
+    }
+</style>
+
+{% endblock %}
+
+{% block content %}
+<link href="https://unpkg.com/@wangeditor/editor@latest/dist/css/style.css" rel="stylesheet" />
+
+<div class="container-fluid">
+    <h1 class="h3 mb-4 text-gray-800">{{ title }}</h1>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">{{ title }}</h6>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                <div class="row mb-3">
+                    <div class="col-md-8">
+                        <div class="mb-3">
+                            <label for="title" class="form-label">标题</label>
+                            <input type="text" class="form-control" id="title" name="title" value="{{ article.title or '' }}" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="content" class="form-label">内容</label>
+                            <div class="mb-2">
+                                <button id="toggle-editor-mode" class="btn btn-secondary" type="button">切换到富文本模式</button>
+                            </div>
+
+                            <!-- HTML编辑器 - 默认显示 -->
+                            <textarea id="html-editor" style="height: 599px;width: 100%;border-radius: 10px;border: 1px dashed #666;" name="content">{{ article.content or '' }}</textarea>
+
+                            <!-- 富文本编辑器 - 默认隐藏 -->
+                            <div id="rich-editor-wrapper" style="display: none;">
+                                <div id="toolbar-container" class="wangeditor-menu">
+                                    <!-- 工具栏 -->
+                                </div>
+                                <div id="editor-container" class="wangeditor-editor" style="min-height: 500px;">
+                                    <!-- 编辑器 -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="summary" class="form-label">摘要</label>
+                            <textarea class="form-control" id="summary" name="summary" rows="3">{{ article.summary or '' }}</textarea>
+                            <small class="form-text text-muted">如果不填写，将自动从内容中提取。</small>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <!-- 侧边栏内容保持不变 -->
+                        <div class="card mb-3">
+                            <div class="card-header">发布设置</div>
+                            <div class="card-body">
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="is_published" name="is_published" {% if article.is_published %}checked{% endif %}>
+                                    <label class="form-check-label" for="is_published">
+                                        发布文章
+                                    </label>
+                                </div>
+
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="is_pinned" name="is_pinned" {% if article.is_pinned %}checked{% endif %}>
+                                    <label class="form-check-label" for="is_pinned">
+                                        置顶文章
+                                    </label>
+                                </div>
+
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="show_on_homepage" name="show_on_homepage" {% if article.show_on_homepage %}checked{% endif %}>
+                                    <label class="form-check-label" for="show_on_homepage">
+                                        在首页显示
+                                    </label>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="visibility" class="form-label">可见性</label>
+                                    <select class="form-select" id="visibility" name="visibility">
+                                        <option value="public" {% if article.visibility == 'public' %}selected{% endif %}>公开</option>
+                                        <option value="login_required" {% if article.visibility == 'login_required' %}selected{% endif %}>登录可见</option>
+                                        <option value="password_protected" {% if article.visibility == 'password_protected' %}selected{% endif %}>密码保护</option>
+                                        <option value="admin_only" {% if article.visibility == 'admin_only' %}selected{% endif %}>仅管理员</option>
+                                    </select>
+                                </div>
+
+                                <div id="password-field" class="mb-3" style="display: {% if article.visibility == 'password_protected' %}block{% else %}none{% endif %};">
+                                    <label for="password" class="form-label">访问密码</label>
+                                    <input type="text" class="form-control" id="password" name="password" value="{{ article.password or '' }}">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card mb-3">
+                            <div class="card-header">分类与标签</div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label for="category_id" class="form-label">分类</label>
+                                    <select class="form-select" id="category_id" name="category_id">
+                                        <option value="">-- 选择分类 --</option>
+                                        {% for category in categories %}
+                                        <option value="{{ category.id }}" {% if article.category_id == category.id %}selected{% endif %}>{{ category.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="tags" class="form-label">标签</label>
+                                    <select class="form-select select2-multiple" id="tags" name="tags" multiple>
+                                        {% for tag in all_tags %}
+                                        <option value="{{ tag.id }}" {% if article.tags and tag in article.tags %}selected{% endif %}>{{ tag.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card mb-3">
+                            <div class="card-header">封面图</div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label for="cover_image" class="form-label">封面图URL</label>
+                                    <input type="text" class="form-control" id="cover_image" name="cover_image" value="{{ article.cover_image or '' }}">
+                                </div>
+
+                                <div class="mb-3">
+                                    <div class="input-group">
+                                        <input type="file" class="form-control" id="cover-file" accept="image/*">
+                                        <button type="button" class="btn btn-primary" id="upload-cover-direct">上传</button>
+                                    </div>
+                                    <div class="progress mt-2 d-none" id="cover-upload-progress">
+                                        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                                    </div>
+                                </div>
+
+                                <div id="cover-preview" class="mt-3 text-center">
+                                    {% if article.cover_image %}
+                                    <img src="{{ article.cover_image }}" class="img-fluid rounded" alt="封面预览">
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card mb-3">
+                            <div class="card-header">课程绑定</div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label for="course_id" class="form-label">绑定课程</label>
+                                    <select class="form-select" id="course_id" name="course_id">
+                                        <option value="0">-- 不绑定课程 --</option>
+                                        {% for course in courses %}
+                                        <option value="{{ course.id }}" {% if article.course_id == course.id %}selected{% endif %}>{{ course.title }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <small class="form-text text-muted">绑定课程后，文章底部会显示课程推广模块。</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between">
+                    <a href="{{ url_for('article.admin_articles') }}" class="btn btn-secondary">返回文章表</a>
+                    <div>
+                        <button type="submit" class="btn btn-primary">保存</button>
+                        <button type="submit" class="btn btn-success" id="save-and-publish">保存并发布</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/@wangeditor/editor@latest/dist/index.js"></script>
+<script>
+// 完全重写编辑器逻辑，使用两个完全独立的编辑器
+let editor; // 富文本编辑器实例
+
+// 初始化富文本编辑器（但不立即显示）
+function initRichEditor() {
+    if (editor) return; // 如果已经初始化，则不重复初始化
+
+    const { createEditor, createToolbar } = window.wangEditor;
+
+    // 编辑器配置
+    const editorConfig = {
+        placeholder: '开始输入...',
+        onChange(editor) {
+            // 当富文本编辑器内容变化时，同步到HTML编辑器
+            const htmlContent = editor.getHtml();
+            document.getElementById('html-editor').value = htmlContent;
+        },
+        // 自定义图片上传逻辑
+        customUploadImg: function (resultFiles, insertImgFn) {
+            const file = resultFiles[0];
+            const formData = new FormData();
+            formData.append('image', file);
+
+            $.ajax({
+                url: '/admin/api/upload_article_image',
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function(response) {
+                    if (response.success) {
+                        insertImgFn(response.image_url);
+                    } else {
+                        alert(response.message || '上传失败');
+                    }
+                },
+                error: function() {
+                    alert('上传失败');
+                }
+            });
+        }
+    };
+
+    // 创建编辑器
+    editor = createEditor({
+        selector: '#editor-container',
+        html: document.getElementById('html-editor').value,
+        config: editorConfig,
+        mode: 'default',
+    });
+
+    // 工具栏配置
+    const toolbarConfig = {};
+
+    // 创建工具栏
+    const toolbar = createToolbar({
+        editor,
+        selector: '#toolbar-container',
+        config: toolbarConfig,
+        mode: 'default',
+    });
+
+    // 处理粘贴图片
+    document.addEventListener('paste', function(e) {
+        if (!editor) return;
+
+        var items = (e.clipboardData || window.clipboardData).items;
+        for (var i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf("image") !== -1) {
+                e.preventDefault();
+                var file = items[i].getAsFile();
+                var formData = new FormData();
+                formData.append('image', file);
+
+                $.ajax({
+                    url: '/admin/api/upload_article_image',
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(response) {
+                        if (response.success) {
+                            editor.insertNode({
+                                type: 'image',
+                                src: response.image_url
+                            });
+                        } else {
+                            alert(response.message || '上传失败');
+                        }
+                    },
+                    error: function() {
+                        alert('上传失败');
+                    }
+                });
+                break;
+            }
+        }
+    });
+}
+
+// 切换编辑器模式
+document.getElementById('toggle-editor-mode').addEventListener('click', function() {
+    const htmlEditor = document.getElementById('html-editor');
+    const richEditorWrapper = document.getElementById('rich-editor-wrapper');
+
+    if (htmlEditor.style.display !== 'none') {
+        // 切换到富文本模式
+        initRichEditor(); // 确保富文本编辑器已初始化
+
+        // 将HTML编辑器的内容设置到富文本编辑器
+        try {
+            editor.setHtml(htmlEditor.value);
+        } catch (e) {
+            console.error('设置HTML内容时出错:', e);
+            alert('HTML内容可能包含不支持的格式，请检查您的HTML代码。');
+            return; // 如果设置失败，不切换编辑器
+        }
+
+        // 显示富文本编辑器，隐藏HTML编辑器
+        htmlEditor.style.display = 'none';
+        richEditorWrapper.style.display = 'block';
+        this.textContent = '切换到HTML模式';
+    } else {
+        // 切换到HTML模式
+        // 将富文本编辑器的内容同步到HTML编辑器
+        if (editor) {
+            htmlEditor.value = editor.getHtml();
+        }
+
+        // 显示HTML编辑器，隐藏富文本编辑器
+        htmlEditor.style.display = 'block';
+        richEditorWrapper.style.display = 'none';
+        this.textContent = '切换到富文本模式';
+    }
+});
+
+// 保存并发布按钮
+document.getElementById('save-and-publish').addEventListener('click', function(e) {
+    e.preventDefault();
+    document.getElementById('is_published').checked = true;
+    document.querySelector('form').submit();
+});
+
+// 表单提交前确保内容已同步
+document.querySelector('form').addEventListener('submit', function() {
+    // 如果当前是富文本模式，则将内容同步到HTML编辑器
+    if (document.getElementById('html-editor').style.display === 'none' && editor) {
+        document.getElementById('html-editor').value = editor.getHtml();
+    }
+});
+</script>
+
+<!-- 封面图上传脚本 -->
+<script>
+    document.getElementById('cover-file').addEventListener('change', function() {
+        if (this.files && this.files[0]) {
+            const file = this.files[0];
+            const formData = new FormData();
+            formData.append('image', file);
+
+            $.ajax({
+                url: '/admin/api/upload_article_image',
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function(response) {
+                    if (response.success) {
+                        // 上传成功，将图片链接填入输入框
+                        document.getElementById('cover_image').value = response.image_url;
+                        // 更新预览
+                        const preview = document.getElementById('cover-preview');
+                        preview.innerHTML = '<img src="' + response.image_url + '" class="img-fluid rounded" alt="封面预览">';
+                    } else {
+                        // 上传失败，提示错误信息
+                        alert(response.message || '上传失败');
+                    }
+                },
+                error: function() {
+                    alert('上传失败');
+                }
+            });
+        }
+    });
+
+    // 上传按钮点击事件
+    document.getElementById('upload-cover-direct').addEventListener('click', function() {
+        document.getElementById('cover-file').click();
+    });
+</script>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+{% endblock %}
+

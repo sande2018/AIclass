@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block title %}{{ article.title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row" style="margin-top: -40px;">
+        <!-- 主内容区 -->
+        <div class="col-md-8">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">首页</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('article.articles') }}">文章</a></li>
+                    {% if article.category %}
+                    <li class="breadcrumb-item"><a href="{{ url_for('article.articles', category=article.category.id) }}">{{ article.category.name }}</a></li>
+                    {% endif %}
+                    <!--<li class="breadcrumb-item active" aria-current="page">{{ article.title }}</li>-->
+                </ol>
+            </nav>
+            
+            <article class="bg-white p-4 rounded shadow-sm">
+                <header class="mb-4">
+                    <h1 class="mb-3">{{ article.title }}</h1>
+                    <div class="d-flex flex-wrap justify-content-between align-items-center text-muted mb-3">
+                        <div class="d-flex flex-wrap align-items-center mb-2 mb-md-0">
+                            <span class="me-3"><i class="bi bi-person"></i> {{ article.author.username }}</span>
+                            <span class="me-3"><i class="bi bi-calendar"></i> {{ article.created_at.strftime('%Y-%m-%d') }}</span>
+                            <span><i class="bi bi-eye"></i> {{ article.view_count }}</span>
+                        </div>
+                        <div class="mt-2 mt-md-0">
+                            {% if article.category %}
+                            <span class="badge bg-primary">{{ article.category.name }}</span>
+                            {% endif %}
+
+                            {% for tag in article.tags %}
+                            <span class="badge bg-secondary">{{ tag.name }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    {% if article.cover_image %}
+                    <img data-src="{{ article.cover_image }}" class="img-fluid rounded mb-4" alt="{{ article.title }}" style="width: 100%;border-radius: 100px;display:none;" >
+                    {% endif %}
+                </header>
+
+                <div class="article-content">
+                    {{ article.content|safe }}
+                </div>
+            </article>
+
+            <!-- 绑定课程推广 -->
+            {% if course %}
+            <div class="card mt-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">推荐课程</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <img src="{{ course.image }}" class="img-fluid rounded" alt="{{ course.title }}">
+                        </div>
+                        <div class="col-md-8">
+                            <h4>{{ course.title }}</h4>
+                            <p>{{ course.description|truncate(150) }}</p>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="text-danger fw-bold">¥{{ "%.2f"|format(course.price) }}</span>
+                                    <span class="text-muted ms-2">讲师: {{ course.instructor }}</span>
+                                </div>
+                                {% if is_enrolled %}
+                                <a href="{{ url_for('course_content', course_id=course.id) }}" class="btn btn-success">进入学习</a>
+                                {% else %}
+                                <a href="{{ url_for('purchase', course_id=course.id) }}" class="btn btn-primary">立即购买</a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- 相关文章 -->
+            {% if related_articles %}
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">相关文章</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for related in related_articles %}
+                        <div class="col-md-4">
+                            <div class="card h-100">
+                                {% if related.cover_image %}
+                                <img src="{{ related.cover_image }}" class="card-img-top" alt="{{ related.title }}">
+                                {% endif %}
+                                <div class="card-body">
+                                    <h5 class="card-title">
+                                        <a href="{{ url_for('article.article_detail', article_id=related.id) }}" class="text-decoration-none">
+                                            {{ related.title }}
+                                        </a>
+                                    </h5>
+                                    <p class="card-text small">{{ related.summary|truncate(80) }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- 侧边栏 -->
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">作者信息</h5>
+                </div>
+                <div class="card-body text-center">
+                    <img src="{{ url_for('static', filename='images/avatar_imgs/' + article.author.avatar) }}" class="rounded-circle mb-3" width="80" height="80" alt="{{ article.author.username }}">
+                    <h5>{{ article.author.username }}</h5>
+                    <p class="text-muted">文章数: {{ article.author.articles|length }}</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">热门文章</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        {% for hot_article in hot_articles %}
+                        <li class="list-group-item">
+                            <a href="{{ url_for('article.article_detail', article_id=hot_article.id) }}" class="text-decoration-none">
+                                {{ hot_article.title }}
+                            </a>
+                            <span class="badge bg-secondary float-end">{{ hot_article.view_count }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    @media (max-width: 767.98px) {
+        .article-content img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .badge {
+            margin-bottom: 5px;
+        }
+    }
+</style>
+{% endblock %}
+

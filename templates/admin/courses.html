@@ -1,0 +1,353 @@
+{% extends 'admin/base.html' %}
+
+{% block title %}课程管理 - 管理后台{% endblock %}
+{% block page_title %}课程管理{% endblock %}
+
+{% block page_actions %}
+<button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addCourseModal">
+    <i class="bi bi-plus-circle me-1"></i>添加课程
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-body">
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <input type="text" class="form-control" placeholder="搜索课程..." id="course-search">
+                    <button class="btn btn-outline-secondary" type="button">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="col-md-6 text-md-end">
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-outline-secondary active" id="filter-all">全部</button>
+                    <button type="button" class="btn btn-outline-secondary" id="filter-active">已发布</button>
+                    <button type="button" class="btn btn-outline-secondary" id="filter-draft">草稿</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>课程名称</th>
+                        <th>讲师</th>
+                        <th>价格</th>
+                        <th>章节数</th>
+                        <th>学员数</th>
+                        <th>状态</th>
+                        <th>创建时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for course in courses %}
+                    <tr data-status="{{ 'active' if course.is_published else 'draft' }}">
+                        <td>{{ course.id }}</td>
+                        <td>{{ course.title }}</td>
+                        <td>{{ course.instructor }}</td>
+                        <td>¥{{ "%.2f"|format(course.price) }}</td>
+                        <td>{{ course.section_count }}</td>
+                        <td>{{ course.enrollment_count }}</td>
+                        <td>
+                            {% if course.is_published %}
+                            <span class="badge bg-success">已发布</span>
+                            {% else %}
+                            <span class="badge bg-warning">草稿</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ course.created_at.strftime('%Y-%m-%d') }}</td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <a href="{{ url_for('admin_course_content', course_id=course.id) }}" class="btn btn-outline-info">
+                                    <i class="bi bi-file-earmark-text"></i>
+                                </a>
+                                <button type="button" class="btn btn-outline-primary edit-course-btn"
+                                        data-id="{{ course.id }}"
+                                        data-title="{{ course.title }}"
+                                        data-description="{{ course.description }}"
+                                        data-instructor="{{ course.instructor }}"
+                                        data-image="{{ course.image }}"
+                                        data-price="{{ course.price }}"
+                                        data-is-published="{{ course.is_published|int }}"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#editCourseModal">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button type="button" class="btn btn-outline-danger delete-course-btn"
+                                        data-id="{{ course.id }}"
+                                        data-title="{{ course.title }}"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#deleteCourseModal">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="9" class="text-center">暂无课程数据</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 分页 -->
+        {% if pagination.pages > 1 %}
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center">
+                <li class="page-item {{ 'disabled' if pagination.page == 1 else '' }}">
+                    <a class="page-link" href="{{ url_for('admin_courses', page=pagination.page-1) if pagination.page > 1 else '#' }}">上一页</a>
+                </li>
+
+                {% for p in range(1, pagination.pages + 1) %}
+                <li class="page-item {{ 'active' if p == pagination.page else '' }}">
+                    <a class="page-link" href="{{ url_for('admin_courses', page=p) }}">{{ p }}</a>
+                </li>
+                {% endfor %}
+
+                <li class="page-item {{ 'disabled' if pagination.page == pagination.pages else '' }}">
+                    <a class="page-link" href="{{ url_for('admin_courses', page=pagination.page+1) if pagination.page < pagination.pages else '#' }}">下一页</a>
+                </li>
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+
+<!-- 添加课程模态框 -->
+<div class="modal fade" id="addCourseModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">添加课程</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ url_for('admin_add_course') }}" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="add-title" class="form-label">课程名称</label>
+                        <input type="text" class="form-control" id="add-title" name="title" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="add-description" class="form-label">课程描述</label>
+                        <textarea class="form-control" id="add-description" name="description" rows="3" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="add-instructor" class="form-label">讲师</label>
+                        <input type="text" class="form-control" id="add-instructor" name="instructor" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="add-image" class="form-label">课程图片URL</label>
+                        <input type="text" class="form-control" id="add-image" name="image" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="add-price" class="form-label">课程价格</label>
+                        <div class="input-group">
+                            <span class="input-group-text">¥</span>
+                            <input type="number" class="form-control" id="add-price" name="price" min="0" step="0.01" value="0.00">
+                            <div class="form-text w-100">设置为0表示免费课程</div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="add-is-published" name="is_published">
+                            <label class="form-check-label" for="add-is-published">立即发布</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">添加</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑课程模态框 -->
+<div class="modal fade" id="editCourseModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">编辑课程</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ url_for('admin_edit_course') }}" method="POST">
+                <div class="modal-body">
+                    <input type="hidden" id="edit-course-id" name="course_id">
+                    <div class="mb-3">
+                        <label for="edit-title" class="form-label">课程名称</label>
+                        <input type="text" class="form-control" id="edit-title" name="title" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit-description" class="form-label">课程描述</label>
+                        <textarea class="form-control" id="edit-description" name="description" rows="3" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit-instructor" class="form-label">讲师</label>
+                        <input type="text" class="form-control" id="edit-instructor" name="instructor" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit-image" class="form-label">课程图片URL</label>
+                        <input type="text" class="form-control" id="edit-image" name="image" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit-price" class="form-label">课程价格</label>
+                        <div class="input-group">
+                            <span class="input-group-text">¥</span>
+                            <input type="number" class="form-control" id="edit-price" name="price" min="0" step="0.01" value="0.00">
+                            <div class="form-text w-100">设置为0表示免费课程</div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="edit-is-published" name="is_published">
+                            <label class="form-check-label" for="edit-is-published">发布课程</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 删除课程确认模态框 -->
+<div class="modal fade" id="deleteCourseModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">确认删除</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>您确定要删除课程 <strong id="delete-course-title"></strong> 吗？此操作不可撤销，并且会删除所有相关的章节内容和学员选课记录。</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <form action="{{ url_for('admin_delete_course') }}" method="POST">
+                    <input type="hidden" id="delete-course-id" name="course_id">
+                    <button type="submit" class="btn btn-danger">删除</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 课程搜索功能
+    const searchInput = document.getElementById('course-search');
+    const courseRows = document.querySelectorAll('tbody tr');
+
+    searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+
+        courseRows.forEach(row => {
+            if (row.querySelector('td:first-child').textContent === '暂无课程数据') return;
+
+            const title = row.querySelector('td:nth-child(2)').textContent.toLowerCase();
+            const instructor = row.querySelector('td:nth-child(3)').textContent.toLowerCase();
+
+            if (title.includes(searchTerm) || instructor.includes(searchTerm)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+
+    // 状态过滤
+    document.getElementById('filter-all').addEventListener('click', function() {
+        courseRows.forEach(row => {
+            row.style.display = '';
+        });
+
+        // 更新按钮状态
+        document.querySelectorAll('.btn-group button').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        this.classList.add('active');
+    });
+
+    document.getElementById('filter-active').addEventListener('click', function() {
+        courseRows.forEach(row => {
+            if (row.dataset.status === 'active') {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        // 更新按钮状态
+        document.querySelectorAll('.btn-group button').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        this.classList.add('active');
+    });
+
+    document.getElementById('filter-draft').addEventListener('click', function() {
+        courseRows.forEach(row => {
+            if (row.dataset.status === 'draft') {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        // 更新按钮状态
+        document.querySelectorAll('.btn-group button').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        this.classList.add('active');
+    });
+
+    // 编辑课程按钮点击事件
+    const editButtons = document.querySelectorAll('.edit-course-btn');
+    editButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const courseId = this.dataset.id;
+            const title = this.dataset.title;
+            const description = this.dataset.description;
+            const instructor = this.dataset.instructor;
+            const image = this.dataset.image;
+            const price = this.dataset.price;
+            const isPublished = parseInt(this.dataset.isPublished);
+
+            document.getElementById('edit-course-id').value = courseId;
+            document.getElementById('edit-title').value = title;
+            document.getElementById('edit-description').value = description;
+            document.getElementById('edit-instructor').value = instructor;
+            document.getElementById('edit-image').value = image;
+            document.getElementById('edit-price').value = price;
+            document.getElementById('edit-is-published').checked = isPublished === 1;
+        });
+    });
+
+    // 删除课程按钮点击事件
+    const deleteButtons = document.querySelectorAll('.delete-course-btn');
+    deleteButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const courseId = this.dataset.id;
+            const title = this.dataset.title;
+
+            document.getElementById('delete-course-id').value = courseId;
+            document.getElementById('delete-course-title').textContent = title;
+        });
+    });
+});
+</script>
+{% endblock %}
+

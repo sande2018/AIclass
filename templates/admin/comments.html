@@ -1,0 +1,613 @@
+{% extends 'admin/base.html' %}
+
+{% block title %}评论管理 - 管理后台{% endblock %}
+
+{% block page_title %}评论管理{% endblock %}
+
+{% block page_actions %}
+<div class="btn-group">
+    <button type="button" class="btn btn-sm btn-outline-secondary" id="batch-delete-btn" disabled>
+        <i class="bi bi-trash me-1"></i>批量删除
+    </button>
+    <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" id="batch-visibility-btn" data-bs-toggle="dropdown" aria-expanded="false" disabled>
+        <i class="bi bi-eye me-1"></i>设置可见性
+    </button>
+    <ul class="dropdown-menu">
+        <li><a class="dropdown-item batch-visibility" data-visibility="public" href="#">公开</a></li>
+        <li><a class="dropdown-item batch-visibility" data-visibility="admin_self" href="#">仅老师和自己可见</a></li>
+        <li><a class="dropdown-item batch-visibility" data-visibility="self" href="#">仅自己可见</a></li>
+    </ul>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">筛选评论</h5>
+    </div>
+    <div class="card-body">
+        <form method="get" action="{{ url_for('admin_comments') }}" class="row g-3">
+            <div class="col-md-3">
+                <label for="user_id" class="form-label">用户</label>
+                <select class="form-select" id="user_id" name="user_id">
+                    <option value="">所有用户</option>
+                    {% for user in users %}
+                    <option value="{{ user.id }}" {% if request.args.get('user_id')|int == user.id %}selected{% endif %}>{{ user.username }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="course_id" class="form-label">课程</label>
+                <select class="form-select" id="course_id" name="course_id">
+                    <option value="">所有课程</option>
+                    {% for course in courses %}
+                    <option value="{{ course.id }}" {% if request.args.get('course_id')|int == course.id %}selected{% endif %}>{{ course.title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="visibility" class="form-label">可见性</label>
+                <select class="form-select" id="visibility" name="visibility">
+                    <option value="">所有</option>
+                    <option value="public" {% if request.args.get('visibility') == 'public' %}selected{% endif %}>公开</option>
+                    <option value="admin_self" {% if request.args.get('visibility') == 'admin_self' %}selected{% endif %}>仅老师和自己可见</option>
+                    <option value="self" {% if request.args.get('visibility') == 'self' %}selected{% endif %}>仅自己可见</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="keyword" class="form-label">关键词</label>
+                <input type="text" class="form-control" id="keyword" name="keyword" value="{{ request.args.get('keyword', '') }}" placeholder="搜索评论内容">
+            </div>
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-search me-1"></i>筛选
+                </button>
+                <a href="{{ url_for('admin_comments') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-circle me-1"></i>重置
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">评论列表</h5>
+        <span class="badge bg-primary">共 {{ pagination.total }} 条评论</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th width="40">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="select-all">
+                            </div>
+                        </th>
+                        <th>ID</th>
+                        <th>用户</th>
+                        <th>课程</th>
+                        <th>章节</th>
+                        <th>内容</th>
+                        <th>可见性</th>
+                        <th>时间</th>
+                        <th>回复数</th>
+                        <th width="120">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for comment in comments %}
+                    <tr>
+                        <td>
+                            <div class="form-check">
+                                <input class="form-check-input comment-checkbox" type="checkbox" value="{{ comment.id }}">
+                            </div>
+                        </td>
+                        <td>{{ comment.id }}</td>
+                        <td>
+                            <a href="{{ url_for('admin_comments', user_id=comment.user.id) }}">{{ comment.user.username }}</a>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('admin_comments', course_id=comment.course.id) }}">{{ comment.course.title }}</a>
+                        </td>
+                        <td>
+                            {% if comment.section.title %}
+                            {{ comment.section.title }}
+                            {% else %}
+                            <span class="text-muted">无章节</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="comment-content">{{ comment.content }}</div>
+                        </td>
+                        <td>
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                    {% if comment.visibility == 'public' %}
+                                    <span class="badge bg-success">公开</span>
+                                    {% elif comment.visibility == 'admin_self' %}
+                                    <span class="badge bg-info">老师和自己</span>
+                                    {% elif comment.visibility == 'self' %}
+                                    <span class="badge bg-warning">仅自己</span>
+                                    {% endif %}
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item change-visibility" href="#" data-comment-id="{{ comment.id }}" data-visibility="public">公开</a></li>
+                                    <li><a class="dropdown-item change-visibility" href="#" data-comment-id="{{ comment.id }}" data-visibility="admin_self">仅老师和自己可见</a></li>
+                                    <li><a class="dropdown-item change-visibility" href="#" data-comment-id="{{ comment.id }}" data-visibility="self">仅自己可见</a></li>
+                                </ul>
+                            </div>
+                        </td>
+                        <td>{{ comment.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>
+                            {% if comment.replies|length > 0 %}
+                            <span class="badge bg-secondary">{{ comment.replies|length }}</span>
+                            {% else %}
+                            <span class="text-muted">0</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <button type="button" class="btn btn-sm btn-outline-info view-replies-btn" data-comment-id="{{ comment.id }}" data-bs-toggle="modal" data-bs-target="#repliesModal">
+                                <i class="bi bi-chat-dots"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-danger delete-comment-btn" data-comment-id="{{ comment.id }}" data-confirm="确定要删除此评论吗？">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="card-footer">
+        <nav>
+            <ul class="pagination justify-content-center mb-0">
+                {% if pagination.has_prev %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('admin_comments', page=pagination.page-1, **request.args) }}">上一页</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled">
+                    <a class="page-link" href="#">上一页</a>
+                </li>
+                {% endif %}
+                
+                {% for p in page_range %}
+                <li class="page-item {% if p == pagination.page %}active{% endif %}">
+                    <a class="page-link" href="{{ url_for('admin_comments', page=p, **request.args) }}">{{ p }}</a>
+                </li>
+                {% endfor %}
+
+                {% if pagination.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('admin_comments', page=pagination.page+1, **request.args) }}">下一页</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled">
+                    <a class="page-link" href="#">下一页</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+</div>
+
+<!-- 回复模态框 -->
+<!-- 回复模态框 -->
+<div class="modal fade" id="repliesModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">评论回复</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="comment-details mb-3">
+                    <div class="d-flex align-items-start mb-2">
+                        <div class="me-2">
+                            <!-- 动态加载用户头像 -->
+                            <img src="" alt="用户头像" class="rounded-circle" width="40" height="40">
+                        </div>
+                        <div>
+                            <div class="fw-bold comment-username"></div>
+                            <div class="text-muted small comment-time"></div>
+                        </div>
+                    </div>
+                    <div class="comment-text p-3 bg-light rounded"></div>
+                </div>
+                <hr>
+                <h6>回复列表</h6>
+                <div id="replies-container" class="mt-3">
+                    <!-- 回复内容将通过 JavaScript 动态加载 -->
+                </div>
+
+                <!-- 快速回复表单 -->
+                <hr>
+                <h6>快速回复</h6>
+                <form id="quick-reply-form" class="mt-3">
+                    <input type="hidden" id="reply-comment-id" name="comment_id">
+                    <div class="mb-3">
+                        <textarea class="form-control" id="reply-content" name="content" rows="3" placeholder="输入回复内容..." required></textarea>
+                    </div>
+                    <div class="text-end">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-send me-1"></i>发送回复
+                        </button>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 全选/取消全选
+        const selectAllCheckbox = document.getElementById('select-all');
+        const commentCheckboxes = document.querySelectorAll('.comment-checkbox');
+        const batchDeleteBtn = document.getElementById('batch-delete-btn');
+        const batchVisibilityBtn = document.getElementById('batch-visibility-btn');
+
+        selectAllCheckbox.addEventListener('change', function() {
+            const isChecked = this.checked;
+            commentCheckboxes.forEach(checkbox => {
+                checkbox.checked = isChecked;
+            });
+            updateBatchButtons();
+        });
+
+        commentCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', updateBatchButtons);
+        });
+
+        function updateBatchButtons() {
+            const checkedCount = document.querySelectorAll('.comment-checkbox:checked').length;
+            batchDeleteBtn.disabled = checkedCount === 0;
+            batchVisibilityBtn.disabled = checkedCount === 0;
+        }
+
+        // 批量删除
+        batchDeleteBtn.addEventListener('click', function() {
+            if (confirm('确定要删除选中的评论吗？此操作不可恢复！')) {
+                const selectedIds = Array.from(document.querySelectorAll('.comment-checkbox:checked'))
+                    .map(checkbox => checkbox.value);
+
+                fetch('{{ url_for("admin_batch_delete_comments") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ comment_ids: selectedIds }),
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('删除成功！');
+                        location.reload();
+                    } else {
+                        alert('删除失败：' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('操作失败，请重试');
+                });
+            }
+        });
+
+        // 批量设置可见性
+        document.querySelectorAll('.batch-visibility').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const visibility = this.dataset.visibility;
+                const selectedIds = Array.from(document.querySelectorAll('.comment-checkbox:checked'))
+                    .map(checkbox => checkbox.value);
+
+                fetch('{{ url_for("admin_batch_update_comment_visibility") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        comment_ids: selectedIds,
+                        visibility: visibility
+                    }),
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('更新成功！');
+                        location.reload();
+                    } else {
+                        alert('更新失败：' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('操作失败，请重试');
+                });
+            });
+        });
+
+        // 单个评论可见性修改
+        document.querySelectorAll('.change-visibility').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const commentId = this.dataset.commentId;
+                const visibility = this.dataset.visibility;
+
+                fetch('{{ url_for("admin_update_comment_visibility") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        comment_id: commentId,
+                        visibility: visibility
+                    }),
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert('更新失败：' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('操作失败，请重试');
+                });
+            });
+        });
+
+        // 删除单个评论
+        document.querySelectorAll('.delete-comment-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                if (confirm(this.dataset.confirm)) {
+                    const commentId = this.dataset.commentId;
+
+                    fetch('{{ url_for("admin_delete_comment") }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ comment_id: commentId }),
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // 移除表格行
+                            this.closest('tr').remove();
+                        } else {
+                            alert('删除失败：' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('操作失败，请重试');
+                    });
+                }
+            });
+        });
+
+        // 查看回复
+// 查看回复
+document.querySelectorAll('.view-replies-btn').forEach(button => {
+    button.addEventListener('click', function() {
+        const commentId = this.dataset.commentId;
+
+        // Store the comment ID in the reply form
+        document.getElementById('reply-comment-id').value = commentId;
+
+        fetch(`{{ url_for("admin_get_comment_replies") }}?comment_id=${commentId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // 填充评论详情
+                document.querySelector('.comment-username').textContent = data.comment.username;
+                document.querySelector('.comment-time').textContent = data.comment.created_at;
+                document.querySelector('.comment-text').textContent = data.comment.content;
+
+                // 填充用户头像
+                const avatarImg = document.querySelector('.comment-details img');
+                avatarImg.src = `/static/images/avatar_imgs/${data.comment.user_avatar}`;
+
+                // 填充回复列表
+                const repliesContainer = document.getElementById('replies-container');
+                repliesContainer.innerHTML = '';
+
+                if (data.replies.length === 0) {
+                    repliesContainer.innerHTML = '<div class="text-center text-muted">暂无回复</div>';
+                } else {
+                    data.replies.forEach(reply => {
+                        const replyElement = document.createElement('div');
+                        replyElement.className = 'reply-item d-flex mb-3';
+                        replyElement.innerHTML = `
+                            <div class="me-2">
+                                <img src="/static/images/avatar_imgs/${reply.user_avatar}" alt="用户头像" class="rounded-circle" width="32" height="32">
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="d-flex justify-content-between">
+                                    <div class="fw-bold">${reply.username}</div>
+                                    <div class="text-muted small">${reply.created_at}</div>
+                                </div>
+                                <div class="mt-1">${reply.content}</div>
+                            </div>
+                            <div class="ms-2">
+                                <button type="button" class="btn btn-sm btn-outline-danger delete-reply-btn"
+                                        data-reply-id="${reply.id}" data-confirm="确定要删除此回复吗？">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        `;
+                        repliesContainer.appendChild(replyElement);
+
+                        // 添加删除回复的事件监听
+                        const deleteBtn = replyElement.querySelector('.delete-reply-btn');
+                        deleteBtn.addEventListener('click', function() {
+                            if (confirm(this.dataset.confirm)) {
+                                const replyId = this.dataset.replyId;
+
+                                fetch('{{ url_for("admin_delete_reply") }}', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                    },
+                                    body: JSON.stringify({ reply_id: replyId }),
+                                })
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.success) {
+                                        // 移除回复元素
+                                        replyElement.remove();
+                                        if (repliesContainer.children.length === 0) {
+                                            repliesContainer.innerHTML = '<div class="text-center text-muted">暂无回复</div>';
+                                        }
+                                    } else {
+                                        alert('删除失败：' + data.message);
+                                    }
+                                })
+                                .catch(error => {
+                                    console.error('Error:', error);
+                                    alert('操作失败，请重试');
+                                });
+                            }
+                        });
+                    });
+                }
+            } else {
+                alert('获取回复失败：' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('操作失败，请重试');
+        });
+    });
+});
+
+        // Add quick reply form submission handler
+        document.getElementById('quick-reply-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const commentId = document.getElementById('reply-comment-id').value;
+            const content = document.getElementById('reply-content').value;
+
+            if (!content.trim()) {
+                alert('回复内容不能为空');
+                return;
+            }
+
+            fetch('{{ url_for("admin_add_reply") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    comment_id: commentId,
+                    content: content
+                }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Clear the form
+                    document.getElementById('reply-content').value = '';
+
+                    // Add the new reply to the list
+                    const repliesContainer = document.getElementById('replies-container');
+
+                    // Remove "no replies" message if it exists
+                    const noRepliesMsg = repliesContainer.querySelector('.text-center.text-muted');
+                    if (noRepliesMsg) {
+                        repliesContainer.innerHTML = '';
+                    }
+
+                    const replyElement = document.createElement('div');
+                    replyElement.className = 'reply-item d-flex mb-3';
+                    replyElement.innerHTML = `
+                        <div class="me-2">
+                            <img src="/static/images/avatar_imgs/${data.reply.user_avatar}" alt="用户头像" class="rounded-circle" width="32" height="32">
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex justify-content-between">
+                                <div class="fw-bold">${data.reply.username}</div>
+                                <div class="text-muted small">${data.reply.created_at}</div>
+                            </div>
+                            <div class="mt-1">${data.reply.content}</div>
+                        </div>
+                        <div class="ms-2">
+                            <button type="button" class="btn btn-sm btn-outline-danger delete-reply-btn"
+                                    data-reply-id="${data.reply.id}" data-confirm="确定要删除此回复吗？">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    `;
+                    repliesContainer.appendChild(replyElement);
+
+                    // Add delete event listener to the new reply
+                    const deleteBtn = replyElement.querySelector('.delete-reply-btn');
+                    deleteBtn.addEventListener('click', function() {
+                        if (confirm(this.dataset.confirm)) {
+                            const replyId = this.dataset.replyId;
+
+                            fetch('{{ url_for("admin_delete_reply") }}', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({ reply_id: replyId }),
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    // 移除回复元素
+                                    replyElement.remove();
+                                    if (repliesContainer.children.length === 0) {
+                                        repliesContainer.innerHTML = '<div class="text-center text-muted">暂无回复</div>';
+                                    }
+                                } else {
+                                    alert('删除失败：' + data.message);
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error:', error);
+                                alert('操作失败，请重试');
+                            });
+                        }
+                    });
+                } else {
+                    alert('回复失败：' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('操作失败，请重试');
+            });
+        });
+    });
+</script>
+<style>
+    .comment-content {
+        max-width: 300px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    
+    @media (max-width: 992px) {
+        .comment-content {
+            max-width: 150px;
+        }
+    }
+</style>
+{% endblock %}
+

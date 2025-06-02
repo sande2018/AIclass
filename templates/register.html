@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+
+{% block title %}注册 - AI 百工坊学堂{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+        <div class="card shadow">
+            <div class="card-body p-5">
+                <h2 class="text-center mb-4">创建账号</h2>
+                <form method="POST" action="{{ url_for('register') }}" id="registerForm">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">用户名</label>
+                        <input type="text" class="form-control" id="username" name="username" required>
+                    </div>
+                    <div class="mb-3" style="display:none;">
+                        <label for="email" class="form-label">电子邮箱</label>
+                        <input type="email" class="form-control" id="email" name="email">
+                        <div class="form-text">邮箱和手机号至少填写一项</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="phone" class="form-label">手机号</label>
+                        <input type="tel" class="form-control" id="phone" name="phone" pattern="[0-9]{11}">
+                        <div class="form-text">请输入11位手机号码</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">密码</label>
+                        <input type="password" class="form-control" id="password" name="password" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="confirm_password" class="form-label">确认密码</label>
+                        <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="terms" required>
+                        <label class="form-check-label" for="terms">我同意<a href="#">服务条款</a>和<a href="#">隐私政策</a></label>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg">注册</button>
+                    </div>
+                </form>
+                <div class="text-center mt-4">
+                    <p>已有账号？ <a href="{{ url_for('login') }}">立即登录</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('registerForm');
+    const password = document.getElementById('password');
+    const confirmPassword = document.getElementById('confirm_password');
+    const email = document.getElementById('email');
+    const phone = document.getElementById('phone');
+
+    form.addEventListener('submit', function(event) {
+        // 验证密码是否一致
+        if (password.value !== confirmPassword.value) {
+            event.preventDefault();
+            alert('两次输入的密码不一致，请重新输入！');
+            return;
+        }
+
+        // 验证邮箱和手机号至少填写一项
+        if (!email.value && !phone.value) {
+            event.preventDefault();
+            alert('邮箱和手机号至少填写一项！');
+            return;
+        }
+
+        // 验证手机号格式（如果填写了手机号）
+        if (phone.value && !/^1[3-9]\d{9}$/.test(phone.value)) {
+            event.preventDefault();
+            alert('请输入正确的11位手机号码！');
+            return;
+        }
+    });
+});
+</script>
+{% endblock %}
+

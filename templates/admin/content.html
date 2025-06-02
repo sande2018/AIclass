@@ -1,0 +1,259 @@
+{% extends 'admin/base.html' %}
+
+{% block title %}内容管理 - 管理后台{% endblock %}
+{% block page_title %}内容管理{% endblock %}
+
+{% block page_actions %}
+<div class="btn-group">
+    <button type="button" class="btn btn-sm btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+        <i class="bi bi-plus-circle me-1"></i>添加内容
+    </button>
+    <ul class="dropdown-menu">
+        <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#addCourseModal">添加课程</a></li>
+        <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#addArticleModal">添加文章</a></li>
+        <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#addAnnouncementModal">添加公告</a></li>
+    </ul>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="card mb-4">
+    <div class="card-header">
+        <ul class="nav nav-tabs card-header-tabs" id="contentTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="courses-tab" data-bs-toggle="tab" data-bs-target="#courses-content" type="button" role="tab" aria-controls="courses-content" aria-selected="true">课程内容</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="articles-tab" data-bs-toggle="tab" data-bs-target="#articles-content" type="button" role="tab" aria-controls="articles-content" aria-selected="false">文章管理</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="announcements-tab" data-bs-toggle="tab" data-bs-target="#announcements-content" type="button" role="tab" aria-controls="announcements-content" aria-selected="false">公告管理</button>
+            </li>
+        </ul>
+    </div>
+    <div class="card-body">
+        <div class="tab-content" id="contentTabsContent">
+            <!-- 课程内容 -->
+            <div class="tab-pane fade show active" id="courses-content" role="tabpanel" aria-labelledby="courses-tab">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>课程名称</th>
+                                <th>章节数</th>
+                                <th>最后更新</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for course in courses %}
+                            <tr>
+                                <td>{{ course.id }}</td>
+                                <td>{{ course.title }}</td>
+                                <td>{{ course.sections|length }}</td>
+                                <td>{{ course.updated_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td>
+                                    <a href="{{ url_for('admin_course_content', course_id=course.id) }}" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-pencil"></i> 编辑内容
+                                    </a>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center">暂无课程数据</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 文章管理 -->
+            <div class="tab-pane fade" id="articles-content" role="tabpanel" aria-labelledby="articles-tab">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>文章功能尚未实现，敬请期待。
+                </div>
+            </div>
+
+            <!-- 公告管理 -->
+            <div class="tab-pane fade" id="announcements-content" role="tabpanel" aria-labelledby="announcements-tab">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>公告功能尚未实现，敬请期待。
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 添加文章模态框 -->
+<div class="modal fade" id="addArticleModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">添加文章</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="mb-3">
+                        <label for="article-title" class="form-label">文章标题</label>
+                        <input type="text" class="form-control" id="article-title" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="article-content" class="form-label">文章内容</label>
+                        <textarea class="form-control" id="article-content" rows="10" required></textarea>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="article-publish">
+                        <label class="form-check-label" for="article-publish">立即发布</label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 添加公告模态框 -->
+<div class="modal fade" id="addAnnouncementModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">添加公告</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="mb-3">
+                        <label for="announcement-title" class="form-label">公告标题</label>
+                        <input type="text" class="form-control" id="announcement-title" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="announcement-content" class="form-label">公告内容</label>
+                        <textarea class="form-control" id="announcement-content" rows="5" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="announcement-type" class="form-label">公告类型</label>
+                        <select class="form-select" id="announcement-type">
+                            <option value="info">普通公告</option>
+                            <option value="warning">重要公告</option>
+                            <option value="danger">紧急公告</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary">发布</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 添加课程模态框 -->
+<div class="modal fade" id="addCourseModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">添加课程</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addCourseForm">
+                    <div class="mb-3">
+                        <label for="course-title" class="form-label">课程名称</label>
+                        <input type="text" class="form-control" id="course-title" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="course-description" class="form-label">课程描述</label>
+                        <textarea class="form-control" id="course-description" rows="5" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="course-instructor" class="form-label">讲师</label>
+                        <input type="text" class="form-control" id="course-instructor">
+                    </div>
+                    <div class="mb-3">
+                        <label for="course-image" class="form-label">课程封面图</label>
+                        <input type="text" class="form-control" id="course-image" placeholder="输入图片URL">
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="course-publish" checked>
+                        <label class="form-check-label" for="course-publish">立即发布</label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="saveCourseBtn">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 保存课程按钮事件
+    const saveCourseBtn = document.getElementById('saveCourseBtn');
+    if (saveCourseBtn) {
+        saveCourseBtn.addEventListener('click', function() {
+            // 获取表单数据
+            const title = document.getElementById('course-title').value;
+            const description = document.getElementById('course-description').value;
+            const instructor = document.getElementById('course-instructor').value;
+            const image = document.getElementById('course-image').value;
+            const isPublished = document.getElementById('course-publish').checked;
+
+            // 验证必填字段
+            if (!title || !description) {
+                alert('请填写课程名称和描述');
+                return;
+            }
+
+            // 准备数据
+            const courseData = {
+                title: title,
+                description: description,
+                instructor: instructor,
+                image: image,
+                is_published: isPublished
+            };
+
+            // 发送请求
+            fetch('/admin/api/courses/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(courseData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 关闭模态框
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('addCourseModal'));
+                    modal.hide();
+
+                    // 显示成功消息
+                    alert('课程添加成功！');
+
+                    // 刷新页面
+                    window.location.reload();
+                } else {
+                    alert('添加失败: ' + (data.message || '未知错误'));
+                }
+            })
+            .catch(error => {
+                console.error('添加课程错误:', error);
+                alert('添加失败，请查看控制台获取详细信息');
+            });
+        });
+    }
+});
+</script>
+{% endblock %}
+{% endblock %}
+

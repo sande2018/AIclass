@@ -1,0 +1,249 @@
+{% extends 'admin/base.html' %}
+
+{% block title %}系统设置 - 管理后台{% endblock %}
+{% block page_title %}系统设置{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-3 mb-4">
+        <div class="list-group">
+            <a href="#general-settings" class="list-group-item list-group-item-action active" data-bs-toggle="list">
+                <i class="bi bi-gear me-2"></i>基本设置
+            </a>
+            <a href="#email-settings" class="list-group-item list-group-item-action" data-bs-toggle="list">
+                <i class="bi bi-envelope me-2"></i>邮件设置
+            </a>
+            <a href="#security-settings" class="list-group-item list-group-item-action" data-bs-toggle="list">
+                <i class="bi bi-shield-lock me-2"></i>安全设置
+            </a>
+            <a href="#backup-settings" class="list-group-item list-group-item-action" data-bs-toggle="list">
+                <i class="bi bi-cloud-arrow-up me-2"></i>备份与恢复
+            </a>
+            <a href="#about-system" class="list-group-item list-group-item-action" data-bs-toggle="list">
+                <i class="bi bi-info-circle me-2"></i>关于系统
+            </a>
+        </div>
+    </div>
+    
+    <div class="col-md-9">
+        <div class="tab-content">
+            <!-- 基本设置 -->
+            <div class="tab-pane fade show active" id="general-settings">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">基本设置</h5>
+                    </div>
+                    <div class="card-body">
+                        <form>
+                            <div class="mb-3">
+                                <label for="site-name" class="form-label">网站名称</label>
+                                <input type="text" class="form-control" id="site-name" value="学习平台">
+                            </div>
+                            <div class="mb-3">
+                                <label for="site-description" class="form-label">网站描述</label>
+                                <textarea class="form-control" id="site-description" rows="3">提供高质量的在线教育，帮助学生实现自己的学习目标。</textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label for="site-logo" class="form-label">网站Logo</label>
+                                <input type="file" class="form-control" id="site-logo">
+                            </div>
+                            <div class="mb-3">
+                                <label for="contact-email" class="form-label">联系邮箱</label>
+                                <input type="email" class="form-control" id="contact-email" value="admin@gzturing.com">
+                            </div>
+                            <div class="mb-3">
+                                <label for="footer-text" class="form-label">页脚文本</label>
+                                <input type="text" class="form-control" id="footer-text" value="&copy; 2025 广州图灵编程. 保留所有权利.">
+                            </div>
+                            <button type="submit" class="btn btn-primary">保存设置</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 邮件设置 -->
+            <div class="tab-pane fade" id="email-settings">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">邮件设置</h5>
+                    </div>
+                    <div class="card-body">
+                        <form>
+                            <div class="mb-3">
+                                <label for="smtp-server" class="form-label">SMTP服务器</label>
+                                <input type="text" class="form-control" id="smtp-server" placeholder="smtp.example.com">
+                            </div>
+                            <div class="mb-3">
+                                <label for="smtp-port" class="form-label">SMTP端口</label>
+                                <input type="number" class="form-control" id="smtp-port" placeholder="587">
+                            </div>
+                            <div class="mb-3">
+                                <label for="smtp-username" class="form-label">SMTP用户名</label>
+                                <input type="text" class="form-control" id="smtp-username" placeholder="username@example.com">
+                            </div>
+                            <div class="mb-3">
+                                <label for="smtp-password" class="form-label">SMTP密码</label>
+                                <input type="password" class="form-control" id="smtp-password">
+                            </div>
+                            <div class="mb-3">
+                                <label for="sender-email" class="form-label">发件人邮箱</label>
+                                <input type="email" class="form-control" id="sender-email" placeholder="noreply@example.com">
+                            </div>
+                            <div class="mb-3">
+                                <label for="sender-name" class="form-label">发件人名称</label>
+                                <input type="text" class="form-control" id="sender-name" placeholder="学习平台">
+                            </div>
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" id="use-ssl">
+                                <label class="form-check-label" for="use-ssl">使用SSL/TLS</label>
+                            </div>
+                            <button type="submit" class="btn btn-primary">保存设置</button>
+                            <button type="button" class="btn btn-outline-secondary">发送测试邮件</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 安全设置 -->
+            <div class="tab-pane fade" id="security-settings">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">安全设置</h5>
+                    </div>
+                    <div class="card-body">
+                        <form>
+                            <div class="mb-3">
+                                <label for="password-policy" class="form-label">密码策略</label>
+                                <select class="form-select" id="password-policy">
+                                    <option value="simple">简单 (至少6个字符)</option>
+                                    <option value="medium" selected>中等 (至少8个字符，包含字母和数字)</option>
+                                    <option value="strong">强 (至少10个字符，包含大小写字母、数字和特殊字符)</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="session-timeout" class="form-label">会话超时时间 (分钟)</label>
+                                <input type="number" class="form-control" id="session-timeout" value="30">
+                            </div>
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" id="enable-captcha" checked>
+                                <label class="form-check-label" for="enable-captcha">启用验证码</label>
+                            </div>
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" id="enable-2fa">
+                                <label class="form-check-label" for="enable-2fa">启用两步验证</label>
+                            </div>
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" id="enable-ip-restriction">
+                                <label class="form-check-label" for="enable-ip-restriction">启用IP限制</label>
+                            </div>
+                            <button type="submit" class="btn btn-primary">保存设置</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 备份与恢复 -->
+            <div class="tab-pane fade" id="backup-settings">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">备份与恢复</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-4">
+                            <h6>数据库备份</h6>
+                            <p>创建数据库的完整备份，包括所有用户、课程和选课数据。</p>
+                            <button type="button" class="btn btn-primary">创建备份</button>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <h6>恢复数据</h6>
+                            <p>从之前的备份中恢复数据。</p>
+                            <div class="input-group mb-3">
+                                <input type="file" class="form-control" id="backup-file">
+                                <button class="btn btn-outline-secondary" type="button">恢复</button>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <h6>自动备份设置</h6>
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" id="enable-auto-backup">
+                                <label class="form-check-label" for="enable-auto-backup">启用自动备份</label>
+                            </div>
+                            <div class="mb-3">
+                                <label for="backup-frequency" class="form-label">备份频率</label>
+                                <select class="form-select" id="backup-frequency">
+                                    <option value="daily">每天</option>
+                                    <option value="weekly" selected>每周</option>
+                                    <option value="monthly">每月</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="backup-retention" class="form-label">保留备份数量</label>
+                                <input type="number" class="form-control" id="backup-retention" value="5">
+                            </div>
+                            <button type="button" class="btn btn-primary">保存设置</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 关于系统 -->
+            <div class="tab-pane fade" id="about-system">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">关于系统</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="text-center mb-4">
+                            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="学习平台" width="120" class="mb-3">
+                            <h4>学习平台管理系统</h4>
+                            <p class="text-muted">版本 1.0.0</p>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <h6>系统信息</h6>
+                            <table class="table">
+                                <tbody>
+                                    <tr>
+                                        <th>Python版本</th>
+                                        <td>3.12.0</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Flask版本</th>
+                                        <td>2.3.3</td>
+                                    </tr>
+                                    <tr>
+                                        <th>SQLAlchemy版本</th>
+                                        <td>2.0.23</td>
+                                    </tr>
+                                    <tr>
+                                        <th>数据库类型</th>
+                                        <td>SQLite</td>
+                                    </tr>
+                                    <tr>
+                                        <th>操作系统</th>
+                                        <td>Windows</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <h6>开发者信息</h6>
+                            <p>本系统由广州图灵AI开发团队开发和维护。</p>
+                            <p>联系邮箱：admin@gzturing.com</p>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <h6>版权信息</h6>
+                            <p>&copy; 广州图灵编程. 保留所有权利.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

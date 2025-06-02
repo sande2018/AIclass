@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>兑换课程 - AI 百工坊学堂</title>
+    <!-- Bootstrap CSS -->
+    <link href="{{ url_for('static', filename='bootstrap.min.css') }}" rel="stylesheet">
+    <!-- 自定义CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .redemption-container {
+            max-width: 500px;
+            margin: 50px auto;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            background-color: #fff;
+        }
+        .course-info {
+            margin-bottom: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            background-color: #f8f9fa;
+        }
+        .course-image {
+            width: 100%;
+            height: auto;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+        .course-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .course-description {
+            color: #6c757d;
+            margin-bottom: 15px;
+        }
+        .course-price {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #dc3545;
+        }
+        .form-label {
+            font-weight: 500;
+        }
+        .btn-redeem {
+            width: 100%;
+            padding: 10px;
+            font-size: 1.1rem;
+        }
+        .logo {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .logo i {
+            font-size: 2rem;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+        .logo span {
+            font-size: 1.5rem;
+            font-weight: bold;
+            vertical-align: middle;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="redemption-container">
+            <div class="logo">
+                <i class="bi bi-book"></i>
+                <span>AI 百工坊学堂</span>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} alert-dismissible fade show">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <h2 class="text-center mb-4">兑换课程</h2>
+
+            <div class="course-info">
+                <img src="{{ course.image }}" alt="{{ course.title }}" class="course-image">
+                <div class="course-title">{{ course.title }}</div>
+                <div class="course-description">{{ course.description|truncate(100) }}</div>
+                <div class="course-price">¥{{ "%.2f"|format(course.price) }}</div>
+            </div>
+
+            <form action="{{ url_for('redeem_code_activate', code=code) }}" method="POST">
+                <div class="mb-3">
+                    <label for="username" class="form-label">姓名</label>
+                    <input type="text" class="form-control" id="username" name="username" required>
+                </div>
+                <div class="mb-3">
+                    <label for="phone" class="form-label">手机号</label>
+                    <input type="tel" class="form-control" id="phone" name="phone" required pattern="[0-9]{11}">
+                    <div class="form-text">请输入11位手机号码，将作为您的登录账号</div>
+                </div>
+                <button type="submit" class="btn btn-primary btn-redeem">立即兑换</button>
+            </form>
+
+            <div class="text-center mt-3">
+                <a href="{{ url_for('login') }}">已有账号？点击登录</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="{{ url_for('static', filename='bootstrap.bundle.min.js') }}"></script>
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap-icons.css') }}">
+</body>
+</html>
+

@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+
+{% block title %}首页 - AI 百工坊学堂{% endblock %}
+
+{% block content %}
+<div class="row align-items-center py-5">
+    <div class="col-lg-6">
+        <h1 class="display-4 fw-bold mb-4">开启您的学习之旅</h1>
+        <p class="lead mb-4">我们提供丰富多样的在线课程，帮助您掌握新技能，实现职业发展目标。</p>
+        <div class="d-grid gap-2 d-md-flex justify-content-md-start">
+            {% if 'user_id' not in session %}
+            <a href="{{ url_for('login') }}" class="btn btn-primary btn-lg px-4 me-md-2">立即登录</a>
+            <a href="{{ url_for('register') }}" class="btn btn-outline-secondary btn-lg px-4">注册账号</a>
+            {% else %}
+            <a href="{{ url_for('dashboard') }}" class="btn btn-primary btn-lg px-4 me-md-2">进入个人中心</a>
+            <a href="{{ url_for('courses') }}" class="btn btn-outline-secondary btn-lg px-4">浏览课程</a>
+            {% endif %}
+        </div>
+    </div>
+    <div class="col-lg-6 d-none d-lg-block">
+        <img src="{{ url_for('static', filename='images/hero.svg') }}" alt="学习插图" class="img-fluid">
+    </div>
+</div>
+
+<hr class="my-5">
+
+<div class="text-center mb-5">
+    <h2 class="fw-bold">我们的特色</h2>
+    <p class="lead">为什么选择我们的学习平台</p>
+</div>
+
+<div class="row g-4 py-3">
+    <div class="col-md-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body text-center py-4">
+                <i class="bi bi-laptop fs-1 text-primary mb-3"></i>
+                <h3 class="card-title">随时随地学习</h3>
+                <p class="card-text">我们的平台支持多设备访问，您可以在任何时间、任何地点继续您的学习。</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body text-center py-4">
+                <i class="bi bi-people fs-1 text-primary mb-3"></i>
+                <h3 class="card-title">专业教师团队</h3>
+                <p class="card-text">我们的课程由行业专家和经验丰富的教师精心设计和讲授。</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body text-center py-4">
+                <i class="bi bi-graph-up fs-1 text-primary mb-3"></i>
+                <h3 class="card-title">个性化学习路径</h3>
+                <p class="card-text">根据您的学习进度和兴趣，我们提供个性化的学习建议和课程推荐。</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<hr class="my-5">
+
+<div class="text-center mb-5">
+    <h2 class="fw-bold">热门课程</h2>
+    <p class="lead">探索我们最受欢迎的课程</p>
+</div>
+
+<!-- 修改首页热门课程部分，对已报名课程显示"去学习"而非"立即报名" -->
+<div class="row g-4">
+    {% for course in courses[:3] if courses %}
+    <div class="col-md-4">
+        <div class="card h-100 shadow-sm">
+            <img src="{{ course.image }}" class="card-img-top" alt="{{ course.title }}">
+            <div class="card-body">
+                <h5 class="card-title">{{ course.title }}</h5>
+                <p class="card-text">{{ course.description }}</p>
+            </div>
+            <div class="card-footer bg-transparent border-top-0">
+                <div class="d-flex justify-content-between align-items-center">
+                    {% if course.price > 0 %}
+                    <span class="badge bg-danger">¥{{ "%.2f"|format(course.price) }}</span>
+                    {% else %}
+                    <span class="badge bg-primary">免费</span>
+                    {% endif %}
+                    {% if 'user_id' in session and course.id in enrolled_course_ids %}
+                    <a href="{{ url_for('course_content', course_id=course.id) }}" class="btn btn-success">去学习</a>
+                    {% else %}
+                        {% if course.price > 0 %}
+                        <a href="{{ url_for('purchase', course_id=course.id) }}" class="btn btn-primary">前往购买</a>
+                        {% else %}
+                        <a href="{{ url_for('enroll', course_id=course.id) }}" class="btn btn-primary">立即报名</a>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-12 text-center">
+        <p>暂无课程信息</p>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="text-center mt-4">
+    <a href="{{ url_for('courses') }}" class="btn btn-outline-primary">查看全部课程</a>
+</div>
+
+<!-- 首页文章展示部分 -->
+{% if homepage_articles %}
+<section class="py-5 bg-light">
+    <div class="container">
+        <h2 class="mb-4">最新文章</h2>
+        <div class="row">
+            {% for article in homepage_articles %}
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    {% if article.cover_image %}
+                    <img src="{{ article.cover_image }}" class="card-img-top" alt="{{ article.title }}">
+                    {% endif %}
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <a href="{{ url_for('article.article_detail', article_id=article.id) }}" class="text-decoration-none">
+                                {{ article.title }}
+                            </a>
+                        </h5>
+                        <p class="card-text small">{{ article.summary|truncate(100) }}</p>
+                    </div>
+                    <div class="card-footer text-muted small">
+                        <i class="bi bi-calendar"></i> {{ article.created_at.strftime('%Y-%m-%d') }}
+                        <span class="ms-2"><i class="bi bi-eye"></i> {{ article.view_count }}</span>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+{% endblock %}
+

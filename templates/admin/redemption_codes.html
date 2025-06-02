@@ -1,0 +1,297 @@
+{% extends 'admin/base.html' %}
+
+{% block title %}兑换码管理 - 管理后台{% endblock %}
+{% block page_title %}兑换码管理{% endblock %}
+
+{% block page_actions %}
+<button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#generateCodeModal">
+    <i class="bi bi-plus-circle me-1"></i>生成兑换码
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-body">
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <input type="text" class="form-control" placeholder="搜索兑换码..." id="code-search">
+                    <button class="btn btn-outline-secondary" type="button">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="col-md-6 text-md-end">
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-outline-secondary active" id="filter-all">全部</button>
+                    <button type="button" class="btn btn-outline-secondary" id="filter-unused">未使用</button>
+                    <button type="button" class="btn btn-outline-secondary" id="filter-used">已使用</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <!-- Modify the redemption codes table to add activation link column -->
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>兑换码</th>
+                        <th>课程</th>
+                        <th>状态</th>
+                        <th>创建时间</th>
+                        <th>使用时间</th>
+                        <th>使用者</th>
+                        <th>激活链接</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for code in codes %}
+                    <tr data-status="{{ 'used' if code.is_used else 'unused' }}">
+                        <td>{{ code.id }}</td>
+                        <td><code>{{ code.code }}</code></td>
+                        <td>{{ code.course.title }}</td>
+                        <td>
+                            {% if code.is_used %}
+                            <span class="badge bg-secondary">已使用</span>
+                            {% else %}
+                            <span class="badge bg-success">可用</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ code.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>{{ code.used_at.strftime('%Y-%m-%d %H:%M') if code.used_at else '-' }}</td>
+                        <td>{{ code.user.username if code.user else '-' }}</td>
+                        <td>
+                            {% if not code.is_used %}
+                            <div class="input-group input-group-sm">
+                                <!--<input type="text" class="form-control form-control-sm" value="{{ url_for('redeem_code_direct', code=code.code, _external=True) }}" id="activation-link-{{ code.id }}" readonly>-->
+                                <!--<button class="btn btn-outline-secondary btn-sm copy-link" type="button" data-link-id="activation-link-{{ code.id }}">-->
+                                <!--    <i class="bi bi-clipboard"></i>-->
+                                <!--</button>-->
+                                {% if not code.is_used %}
+                                <div class="input-group input-group-sm">
+                                    <!-- 隐藏的激活链接（不显示） -->
+                                    <a href="{{ url_for('redeem_code_direct', code=code.code) }}" 
+                                       class="activation-link d-none" 
+                                       data-course="{{ code.course.title }}">
+                                    </a>
+                            
+                                    <!-- 只显示剪贴板图标按钮 -->
+                                    <button class="btn btn-outline-secondary btn-sm copy-link" type="button" data-link="{{ url_for('redeem_code_direct', code=code.code) }}" data-course="{{ code.course.title }}">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
+                                </div>
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                                
+                                
+                            </div>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if not code.is_used %}
+                            <form action="{{ url_for('admin_delete_redemption_code') }}" method="POST" class="d-inline">
+                                <input type="hidden" name="code_id" value="{{ code.id }}">
+                                <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('确定要删除这个兑换码吗？')">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                            {% else %}
+                            <button type="button" class="btn btn-sm btn-outline-secondary" disabled>
+                                <i class="bi bi-trash"></i>
+                            </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="9" class="text-center">暂无兑换码数据</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 分页 -->
+        {% if pagination.pages > 1 %}
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center">
+                <li class="page-item {{ 'disabled' if pagination.page == 1 else '' }}">
+                    <a class="page-link" href="{{ url_for('admin_redemption_codes', page=pagination.page-1) if pagination.page > 1 else '#' }}">上一页</a>
+                </li>
+
+                {% for p in range(1, pagination.pages + 1) %}
+                <li class="page-item {{ 'active' if p == pagination.page else '' }}">
+                    <a class="page-link" href="{{ url_for('admin_redemption_codes', page=p) }}">{{ p }}</a>
+                </li>
+                {% endfor %}
+
+                <li class="page-item {{ 'disabled' if pagination.page == pagination.pages else '' }}">
+                    <a class="page-link" href="{{ url_for('admin_redemption_codes', page=pagination.page+1) if pagination.page < pagination.pages else '#' }}">下一页</a>
+                </li>
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+
+<!-- 生成兑换码模态框 -->
+<div class="modal fade" id="generateCodeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">生成兑换码</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ url_for('admin_generate_redemption_code') }}" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="course_id" class="form-label">选择课程</label>
+                        <select class="form-select" id="course_id" name="course_id" required>
+                            <option value="">-- 请选择课程 --</option>
+                            {% for course in courses %}
+                            <option value="{{ course.id }}">{{ course.title }} (¥{{ "%.2f"|format(course.price) }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="count" class="form-label">生成数量</label>
+                        <input type="number" class="form-control" id="count" name="count" min="1" max="100" value="1" required>
+                        <div class="form-text">一次最多可生成100个兑换码</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">生成</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.copy-link').forEach(button => {
+        button.addEventListener('click', function() {
+            const courseTitle = this.getAttribute('data-course'); // 课程名称
+            const redeemPath = this.getAttribute('data-link'); // 兑换路径
+            const fullLink = window.location.origin + redeemPath; // 拼接完整兑换链接
+
+            // 复制的完整文本
+            const copyText = `您的课程【${courseTitle}】已购买成功。\n\n请点击下方链接，登记入班吧：\n${fullLink}`;
+
+            // 复制到剪贴板
+            navigator.clipboard.writeText(copyText).then(() => {
+                alert('兑换信息已复制！\n' + copyText);
+            }).catch(err => {
+                console.error('复制失败:', err);
+            });
+        });
+    });
+});
+</script>
+
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 兑换码搜索功能
+    const searchInput = document.getElementById('code-search');
+    const codeRows = document.querySelectorAll('tbody tr');
+
+    searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+
+        codeRows.forEach(row => {
+            if (row.querySelector('td:first-child').textContent === '暂无兑换码数据') return;
+
+            const code = row.querySelector('td:nth-child(2)').textContent.toLowerCase();
+            const course = row.querySelector('td:nth-child(3)').textContent.toLowerCase();
+
+            if (code.includes(searchTerm) || course.includes(searchTerm)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+
+    // 状态过滤
+    document.getElementById('filter-all').addEventListener('click', function() {
+        codeRows.forEach(row => {
+            row.style.display = '';
+        });
+
+        // 更新按钮状态
+        document.querySelectorAll('.btn-group button').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        this.classList.add('active');
+    });
+
+    document.getElementById('filter-unused').addEventListener('click', function() {
+        codeRows.forEach(row => {
+            if (row.dataset.status === 'unused') {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        // 更新按钮状态
+        document.querySelectorAll('.btn-group button').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        this.classList.add('active');
+    });
+
+    document.getElementById('filter-used').addEventListener('click', function() {
+        codeRows.forEach(row => {
+            if (row.dataset.status === 'used') {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        // 更新按钮状态
+        document.querySelectorAll('.btn-group button').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        this.classList.add('active');
+    });
+
+    // 复制激活链接
+    // const copyButtons = document.querySelectorAll('.copy-link');
+    // copyButtons.forEach(button => {
+    //     button.addEventListener('click', function() {
+    //         const linkId = this.getAttribute('data-link-id');
+    //         const linkInput = document.getElementById(linkId);
+
+    //         linkInput.select();
+    //         document.execCommand('copy');
+
+    //         // 显示复制成功提示
+    //         const originalHTML = this.innerHTML;
+    //         this.innerHTML = '<i class="bi bi-check"></i>';
+    //         this.classList.add('btn-success');
+    //         this.classList.remove('btn-outline-secondary');
+
+    //         setTimeout(() => {
+    //             this.innerHTML = originalHTML;
+    //             this.classList.remove('btn-success');
+    //             this.classList.add('btn-outline-secondary');
+    //         }, 1500);
+    //     });
+    // });
+});
+</script>
+{% endblock %}
+

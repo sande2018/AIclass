@@ -1,0 +1,925 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ course.title }} - AI 百工坊学堂{% endblock %}
+
+{% block content %}
+<style>
+    .video-container.loading::before {
+        content: "加载中...";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0,0,0,0.7);
+        color: white;
+        padding: 10px 20px;
+        border-radius: 4px;
+        z-index: 1;
+    }
+</style>
+<div class="row">
+    <div class="col-lg-3 mb-4 order-2 order-lg-1">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">课程目录</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush" id="course-sections">
+                    {% for section in sections %}
+                    <a href="#section-{{ section.id }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center section-link {% if loop.first %}active{% endif %}">
+                        <div class="d-flex align-items-center">
+                            {% if section.completed %}
+                            <i class="bi bi-check-circle-fill text-success me-2"></i>
+                            {% else %}
+                            <i class="bi bi-circle text-muted me-2"></i>
+                            {% endif %}
+                            <span>{{ section.title }}</span>
+                        </div>
+                        <span class="badge bg-primary rounded-pill">{{ section.duration }}分钟</span>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="card-footer bg-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span>总进度</span>
+                    <span>{{ progress }}%</span>
+                </div>
+                <div class="progress mt-2" style="height: 8px;">
+                    <div class="progress-bar" role="progressbar" style="width: {{ progress }}%;" aria-valuenow="{{ progress }}" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mt-4">
+            <div class="card-body">
+                <h5 class="card-title">课程信息</h5>
+                <ul class="list-unstyled">
+                    <li class="mb-2"><i class="bi bi-clock me-2"></i>总时长: {{ total_duration }}分钟</li>
+                        <li class="mb-2"><i class="bi bi-calendar-check me-2"></i>更新日期: {{ enrollment_date }}</li>
+                    <li><i class="bi bi-person-check me-2"></i>讲师: {{ course.instructor }}</li>
+                </ul>
+                <a href="{{ url_for('dashboard') }}" class="btn btn-outline-primary w-100 mt-3">
+                    <i class="bi bi-arrow-left me-2"></i>返回个人中心
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-9 order-1 order-lg-2">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">{{ course.title }}</h4>
+                <button id="mark-complete-btn" class="btn btn-sm" data-course-id="{{ course.id }}" data-section-id="">
+                    <i class="bi me-1"></i><span>标记本章节为已完成</span>
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="course-content">
+                    {% for section in sections %}
+                    <div id="section-{{ section.id }}" class="section-content {% if not loop.first %}d-none{% endif %}" data-completed="{{ section.completed|lower }}">
+                        <h3 class="mb-4">{{ section.title }}</h3>
+
+                        {% if section.video_url %}
+                        <div class="ratio ratio-16x9 mb-4 video-container">
+                            <iframe data-section-id="{{ section.id }}" title="{{ section.title }}" allowfullscreen width="100%" frameborder="no" scrolling="no" allowtransparency="yes"></iframe>
+                        </div>
+                        {% endif %}
+
+                        <div class="content-text">
+                            {{ section.content|safe }}
+                        </div>
+
+                        <div class="navigation-buttons mt-4 d-flex flex-wrap justify-content-between gap-2">
+                            {% if not loop.first %}
+                            <button class="btn btn-outline-primary prev-section" data-target="section-{{ section.id - 1 }}">
+                                <i class="bi bi-arrow-left me-2"></i>上一节
+                            </button>
+                            {% else %}
+                            <div></div>
+                            {% endif %}
+
+                            {% if not loop.last %}
+                            <button class="btn btn-primary next-section" data-target="section-{{ section.id + 1 }}">
+                                下一节<i class="bi bi-arrow-right ms-2"></i>
+                            </button>
+                            {% else %}
+                            <button class="btn btn-success complete-course" data-course-id="{{ course.id }}">
+                                完成课程<i class="bi bi-check-circle ms-2"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+
+                        <!-- 章节评论区 -->
+                        <div class="card shadow-sm mt-4 section-comments" data-section-id="{{ section.id }}">
+                            <div class="card-header bg-white">
+                                <h5 class="mb-0">章节讨论区</h5>
+                            </div>
+                            <div class="card-body">
+                                <!-- 修改评论显示部分，添加可见性标识 -->
+                                <div class="comments-section" id="comments-section-{{ section.id }}">
+{% if section.comments %}
+    {% for comment in section.comments %}
+        {% if comment.visibility == 'public' or (comment.visibility == 'admin_self' and (current_user.is_admin or comment.user.id == current_user.id)) or (comment.visibility == 'self' and comment.user.id == current_user.id) %}
+        <div class="comment mb-3 p-3 border rounded overflow-hidden" id="comment-{{ comment.id }}" data-visibility="{{ comment.visibility }}">
+            <div class="d-flex justify-content-between align-items-center mb-2 zyb2">
+                <div class="d-flex align-items-center">
+                    <img src="{{ url_for('static', filename='images/avatar_imgs/' + comment.user.avatar) }}" alt="用户头像1" class="rounded-circle me-2" width="32">
+                    <span class="fw-bold">{{ comment.user.username }}</span>
+                    {% if comment.visibility != 'public' %}
+                    <span class="badge bg-secondary ms-2">
+                        {% if comment.visibility == 'admin_self' %}
+                        仅老师和自己可见
+                        {% elif comment.visibility == 'self' %}
+                        仅自己可见
+                        {% endif %}
+                    </span>
+                    {% endif %}
+                </div>
+                <div>
+                    <small class="text-muted me-2">{{ comment.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                    {% if comment.user.id == current_user.id %}
+                    <button class="btn btn-sm btn-outline-danger delete-comment-btn" data-comment-id="{{ comment.id }}">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            <p class="mb-2">{{ comment.content }}</p>
+
+            <!-- 回复按钮 -->
+            <div class="d-flex justify-content-between align-items-center">
+                <button class="btn btn-sm btn-link reply-btn" data-comment-id="{{ comment.id }}">
+                    <i class="bi bi-reply"></i> 回复
+                </button>
+            </div>
+
+            <!-- 回复表单 (默认隐藏) -->
+            <div class="reply-form-container mt-2 d-none" id="reply-form-{{ comment.id }}">
+                <form class="reply-form" data-parent-id="{{ comment.id }}">
+                    <div class="input-group">
+                        <input type="text" class="form-control form-control-sm" placeholder="回复..." required>
+                        <button class="btn btn-sm btn-primary" type="submit">发送</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- 回复列表 -->
+            {% if comment.replies %}
+            <div class="replies mt-2 ms-4">
+                {% for reply in comment.replies %}
+                <div class="reply p-2 border-start border-3 ps-3 mb-2" id="reply-{{ reply.id }}">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center">
+                            <img src="{{ url_for('static', filename='images/avatar_imgs/' + reply.user.avatar) }}" alt="用户头像2" class="rounded-circle me-2" width="24">
+                            <span class="fw-bold small">{{ reply.user.username }}</span>
+                        </div>
+                        <div>
+                            <small class="text-muted me-2">{{ reply.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                            {% if reply.user.id == current_user.id %}
+                            <button class="btn btn-sm btn-outline-danger delete-reply-btn" data-reply-id="{{ reply.id }}">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <p class="mb-0 small">{{ reply.content }}</p>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+    {% endfor %}
+{% else %}
+<p class="text-center text-muted">暂无讨论，成为第一个发表评论的人吧！</p>
+{% endif %}
+                                </div>
+
+                                <!-- 修改评论表单，添加可见性选项 -->
+                                <form class="comment-form mt-4" data-section-id="{{ section.id }}">
+                                    <div class="mb-3">
+                                        <label for="comment-content-{{ section.id }}" class="form-label">发表评论</label>
+                                        <textarea class="form-control comment-content" id="comment-content-{{ section.id }}" rows="3" required></textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">可见范围</label>
+                                        <div class="d-flex">
+                                            <div class="form-check me-3">
+                                                <input class="form-check-input" type="radio" name="visibility-{{ section.id }}" id="visibility-public-{{ section.id }}" value="public" checked>
+                                                <label class="form-check-label" for="visibility-public-{{ section.id }}">
+                                                    所有人可见
+                                                </label>
+                                            </div>
+                                            <div class="form-check me-3">
+                                                <input class="form-check-input" type="radio" name="visibility-{{ section.id }}" id="visibility-admin-self-{{ section.id }}" value="admin_self">
+                                                <label class="form-check-label" for="visibility-admin-self-{{ section.id }}">
+                                                    仅老师和自己可见
+                                                </label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="radio" name="visibility-{{ section.id }}" id="visibility-self-{{ section.id }}" value="self">
+                                                <label class="form-check-label" for="visibility-self-{{ section.id }}">
+                                                    仅自己可见
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">提交评论</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const sections = document.querySelectorAll(".section-content");
+    const sectionLinks = document.querySelectorAll(".section-link");
+
+    function loadIframe(iframe) {
+        if (iframe && !iframe.src) {
+            iframe.src = iframe.getAttribute("data-src"); // 懒加载 iframe
+        }
+    }
+
+    function deactivatePreviousIframes() {
+        document.querySelectorAll(".video-container iframe").forEach(iframe => {
+            try {
+                // 先尝试暂停 YouTube/Vimeo 视频
+                iframe.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', "*");
+            } catch (error) {}
+
+            // 彻底移除并重新创建 iframe 以确保视频暂停
+            const originalSrc = iframe.getAttribute("src") || iframe.getAttribute("data-src");
+            if (originalSrc) {
+                const newIframe = document.createElement("iframe");
+                newIframe.setAttribute("src", originalSrc);
+                newIframe.setAttribute("title", iframe.getAttribute("title"));
+                newIframe.setAttribute("allowfullscreen", "true");
+                newIframe.setAttribute("frameborder", "no");
+                newIframe.setAttribute("scrolling", "no");
+                newIframe.setAttribute("allowtransparency", "yes");
+                newIframe.style = iframe.style.cssText;
+
+                // 替换原来的 iframe
+                iframe.parentNode.replaceChild(newIframe, iframe);
+            }
+        });
+    }
+
+    sectionLinks.forEach(link => {
+        link.addEventListener("click", function (e) {
+            e.preventDefault();
+            const targetId = this.getAttribute("href").substring(1);
+            loadSection(targetId);
+        });
+    });
+
+function loadSection(sectionId) {
+    sections.forEach(section => {
+        const iframe = section.querySelector("iframe");
+        if (section.id === sectionId) {
+            section.classList.add("active");
+            section.classList.remove("d-none");
+            // 对于当前激活章节，如果 iframe 未加载，则调用 fetchVideoUrl 加载视频
+            if (iframe && !iframe.src) {
+                const currentSectionId = iframe.getAttribute("data-section-id");
+                fetchVideoUrl(currentSectionId, iframe);
+            }
+        } else {
+            section.classList.remove("active");
+            section.classList.add("d-none");
+            // 清除非激活章节的 iframe src 属性，确保视频停止播放
+            if (iframe) {
+                iframe.removeAttribute("src");
+            }
+        }
+    });
+    // 更新侧边菜单的激活状态
+    sectionLinks.forEach(link => {
+        link.classList.toggle("active", link.getAttribute("href") === `#${sectionId}`);
+    });
+}
+
+// Function to fetch video URL via AJAX
+function fetchVideoUrl(sectionId, iframe) {
+    // Show loading indicator
+    iframe.parentNode.classList.add("loading");
+
+    // Fetch the video URL from the server
+    fetch(`/get_video_url/${sectionId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.video_url) {
+                iframe.src = data.video_url;
+            } else {
+                console.error("Failed to load video URL:", data.message);
+            }
+            // Remove loading indicator
+            iframe.parentNode.classList.remove("loading");
+        })
+        .catch(error => {
+            console.error("Error fetching video URL:", error);
+            iframe.parentNode.classList.remove("loading");
+        });
+}
+
+    // **页面加载完成后，自动加载当前打开的 section**
+window.addEventListener("load", function () {
+    const activeSection = document.querySelector(".section-content.active");
+    if (activeSection) {
+        const sectionId = activeSection.id;
+        loadSection(sectionId);
+    }
+});
+});
+</script>
+
+
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 课程章节导航
+    const sectionLinks = document.querySelectorAll('.section-link');
+    const sectionContents = document.querySelectorAll('.section-content');
+    const markCompleteBtn = document.getElementById('mark-complete-btn');
+
+    // 设置初始章节ID和完成状态
+    if (sectionContents.length > 0) {
+        const firstSection = sectionContents[0];
+        const firstSectionId = firstSection.id.replace('section-', '');
+        const isCompleted = firstSection.getAttribute('data-completed') === 'true';
+
+        markCompleteBtn.setAttribute('data-section-id', firstSectionId);
+        updateCompletionButton(markCompleteBtn, isCompleted);
+    }
+
+    // 更新完成按钮状态
+    function updateCompletionButton(button, isCompleted) {
+        if (isCompleted) {
+            button.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i><span>已完成</span>';
+            button.classList.remove('btn-success');
+            button.classList.add('btn-secondary');
+            button.disabled = true;
+        } else {
+            button.innerHTML = '<i class="bi bi-check-circle me-1"></i><span>标记本章节为已完成</span>';
+            button.classList.remove('btn-secondary');
+            button.classList.add('btn-success');
+            button.disabled = false;
+        }
+    }
+
+    sectionLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+
+            // 更新活动链接样式
+            sectionLinks.forEach(l => l.classList.remove('active'));
+            this.classList.add('active');
+
+            // 显示对应内容
+            const targetId = this.getAttribute('href').substring(1);
+            sectionContents.forEach(content => {
+                if (content.id === targetId) {
+                    content.classList.remove('d-none');
+                    // 更新"标记为已完成"按钮的章节ID
+                    const sectionId = targetId.replace('section-', '');
+                    markCompleteBtn.setAttribute('data-section-id', sectionId);
+
+                    // 检查章节是否已完成，更新按钮状态
+                    const isCompleted = content.getAttribute('data-completed') === 'true';
+                    updateCompletionButton(markCompleteBtn, isCompleted);
+                } else {
+                    content.classList.add('d-none');
+                }
+            });
+        });
+    });
+
+    // 上一节/下一节导航
+    const prevButtons = document.querySelectorAll('.prev-section');
+    const nextButtons = document.querySelectorAll('.next-section');
+
+    prevButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const targetId = this.getAttribute('data-target');
+            document.querySelector(`a[href="#${targetId}"]`).click();
+        });
+    });
+
+    nextButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const targetId = this.getAttribute('data-target');
+            document.querySelector(`a[href="#${targetId}"]`).click();
+        });
+    });
+
+    // 标记章节为已完成
+    markCompleteBtn.addEventListener('click', function() {
+        const courseId = this.getAttribute('data-course-id');
+        const sectionId = this.getAttribute('data-section-id');
+
+        // 发送AJAX请求到后端
+        fetch(`/mark_complete/${courseId}/${sectionId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // 更新UI显示
+                updateCompletionButton(this, true);
+
+                // 更新进度条
+                const progressBar = document.querySelector('.progress-bar');
+                const progressText = document.querySelector('.card-footer span:last-child');
+                progressBar.style.width = `${data.progress}%`;
+                progressBar.setAttribute('aria-valuenow', data.progress);
+                progressText.textContent = `${data.progress}%`;
+
+                // 更新章节列表中的图标
+                const sectionLink = document.querySelector(`a[href="#section-${sectionId}"]`);
+                const icon = sectionLink.querySelector('i');
+                icon.className = 'bi bi-check-circle-fill text-success me-2';
+
+                // 更新章节内容的完成状态
+                const sectionContent = document.getElementById(`section-${sectionId}`);
+                sectionContent.setAttribute('data-completed', 'true');
+
+                // 显示成功消息
+                alert('章节已标记为完成！');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('操作失败，请重试');
+        });
+    });
+
+    // 完成课程按钮
+    const completeButton = document.querySelector('.complete-course');
+    if (completeButton) {
+        completeButton.addEventListener('click', function() {
+            const courseId = this.getAttribute('data-course-id');
+
+            // 发送AJAX请求到后端
+            fetch(`/complete_course/${courseId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('恭喜您完成了课程！');
+                    window.location.href = '/dashboard';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('操作失败，请重试');
+            });
+        });
+    }
+
+// 提交评论
+const commentForms = document.querySelectorAll('.comment-form');
+commentForms.forEach(form => {
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const sectionId = this.getAttribute('data-section-id') || document.querySelector('.section-content:not(.d-none)').id.replace('section-', '');
+        const courseId = markCompleteBtn.getAttribute('data-course-id');
+        const contentTextarea = this.querySelector('.comment-content');
+        const content = contentTextarea.value;
+
+        // 获取选中的可见性选项
+        const visibilityRadio = document.querySelector(`input[name="visibility-${sectionId}"]:checked`);
+        const visibility = visibilityRadio ? visibilityRadio.value : 'public';
+
+        // 发送AJAX请求到后端
+        fetch(`/add_comment/${courseId}/${sectionId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                content: content,
+                visibility: visibility
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // 清空评论框
+                contentTextarea.value = '';
+
+                // 添加新评论到评论区
+                const commentsSection = document.getElementById(`comments-section-${sectionId}`);
+                const noCommentsMsg = commentsSection.querySelector('.text-muted');
+
+                if (noCommentsMsg) {
+                    noCommentsMsg.remove();
+                }
+
+                const newComment = document.createElement('div');
+                newComment.className = 'comment mb-3 p-3 border rounded overflow-hidden';
+                newComment.id = `comment-${data.comment.id}`;
+                newComment.setAttribute('data-visibility', data.comment.visibility);
+
+                // 构建可见性标签
+                let visibilityBadge = '';
+                if (data.comment.visibility !== 'public') {
+                    let visibilityText = '';
+                    if (data.comment.visibility === 'admin_self') {
+                        visibilityText = '仅老师和自己可见';
+                    } else if (data.comment.visibility === 'self') {
+                        visibilityText = '仅自己可见';
+                    }
+                    visibilityBadge = `<span class="badge bg-secondary ms-2">${visibilityText}</span>`;
+                }
+
+                newComment.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-center mb-2 zyb1">
+                        <div class="d-flex align-items-center">
+                            <img src="${'/static/images/avatar_imgs/' + data.comment.user_avatar}" alt="用户头像3" class="rounded-circle me-2" width="32">
+                            <span class="fw-bold">${data.comment.username}</span>
+                            ${visibilityBadge}
+                        </div>
+                        <div>
+                            <small class="text-muted me-2">${data.comment.created_at}</small>
+                            <button class="btn btn-sm btn-outline-danger delete-comment-btn" data-comment-id="${data.comment.id}">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <p class="mb-2">${data.comment.content}</p>
+
+                    <div class="d-flex justify-content-between align-items-center">
+                        <button class="btn btn-sm btn-link reply-btn" data-comment-id="${data.comment.id}">
+                            <i class="bi bi-reply"></i> 回复
+                        </button>
+                    </div>
+
+                    <div class="reply-form-container mt-2 d-none" id="reply-form-${data.comment.id}">
+                        <form class="reply-form" data-parent-id="${data.comment.id}">
+                            <div class="input-group">
+                                <input type="text" class="form-control form-control-sm" placeholder="回复..." required>
+                                <button class="btn btn-sm btn-primary" type="submit">发送</button>
+                            </div>
+                        </form>
+                    </div>
+                `;
+
+                // 将新评论追加到评论列表的末尾
+                commentsSection.appendChild(newComment);
+
+                // 为新添加的评论绑定事件
+                bindCommentEvents(newComment);
+
+                // 重新绑定所有评论的事件
+                bindCommentEvents();
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('评论提交失败，请重试');
+        });
+    });
+});
+
+    // 回复按钮点击事件
+    function bindReplyBtnEvents() {
+        document.querySelectorAll('.reply-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const commentId = this.getAttribute('data-comment-id');
+                const replyForm = document.getElementById(`reply-form-${commentId}`);
+
+                // 切换回复表单的显示状态
+                replyForm.classList.toggle('d-none');
+
+                // 如果显示了表单，聚焦到输入框
+                if (!replyForm.classList.contains('d-none')) {
+                    replyForm.querySelector('input').focus();
+                }
+            });
+        });
+    }
+
+    // 提交回复
+    function bindReplyFormEvents() {
+        document.querySelectorAll('.reply-form').forEach(form => {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                const parentId = this.getAttribute('data-parent-id');
+                const content = this.querySelector('input').value;
+                const courseId = markCompleteBtn.getAttribute('data-course-id');
+                const sectionId = document.querySelector('.section-content:not(.d-none)').id.replace('section-', '');
+
+                // 发送AJAX请求到后端
+                fetch(`/add_reply/${courseId}/${sectionId}/${parentId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ content: content })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // 清空回复框并隐藏
+                        this.querySelector('input').value = '';
+                        this.closest('.reply-form-container').classList.add('d-none');
+
+                        // 添加新回复到回���区
+                        const comment = document.getElementById(`comment-${parentId}`);
+                        let repliesContainer = comment.querySelector('.replies');
+
+                        // 如果还没有回复容器，创建一个
+                        if (!repliesContainer) {
+                            repliesContainer = document.createElement('div');
+                            repliesContainer.className = 'replies mt-2 ms-4';
+                            comment.appendChild(repliesContainer);
+                        }
+
+                        const newReply = document.createElement('div');
+                        newReply.className = 'reply p-2 border-start border-3 ps-3 mb-2';
+                        newReply.id = `reply-${data.reply.id}`;
+
+                        newReply.innerHTML = `
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="d-flex align-items-center">
+                                    <img src="${'/static/images/avatar_imgs/' + data.reply.user_avatar}" alt="用户头像4" class="rounded-circle me-2" width="24">
+                                    <span class="fw-bold small">${data.reply.username}</span>
+                                </div>
+                                <div>
+                                    <small class="text-muted me-2">${data.reply.created_at}</small>
+                                    <button class="btn btn-sm btn-outline-danger delete-reply-btn" data-reply-id="${data.reply.id}">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <p class="mb-0 small">${data.reply.content}</p>
+                        `;
+
+                        repliesContainer.appendChild(newReply);
+
+                        // 为新添加的回复绑定删除事件
+                        bindDeleteReplyEvents(newReply);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('回复提交失败，请重试');
+                });
+            });
+        });
+    }
+
+    // 删除评论
+    function bindDeleteCommentEvents() {
+        document.querySelectorAll('.delete-comment-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                if (confirm('确定要删除这条评论吗？')) {
+                    const commentId = this.getAttribute('data-comment-id');
+                    const courseId = markCompleteBtn.getAttribute('data-course-id');
+                    const sectionId = document.querySelector('.section-content:not(.d-none)').id.replace('section-', '');
+
+                    // 发送AJAX请求到后端
+                    fetch(`/delete_comment/${courseId}/${sectionId}/${commentId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // 从DOM中移除评论
+                            const comment = document.getElementById(`comment-${commentId}`);
+                            comment.remove();
+
+                            // 检查是否还有评论，如果没有则显示提示信息
+                            const commentsSection = document.getElementById(`comments-section-${sectionId}`);
+                            if (commentsSection.querySelectorAll('.comment').length === 0) {
+                                const noCommentsMsg = document.createElement('p');
+                                noCommentsMsg.className = 'text-center text-muted';
+                                noCommentsMsg.textContent = '暂无讨论，成为第一个发表评论的人吧！';
+                                commentsSection.appendChild(noCommentsMsg);
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('删除失败，请重试');
+                    });
+                }
+            });
+        });
+    }
+
+    // 删除回复
+    function bindDeleteReplyEvents(container = document) {
+        container.querySelectorAll('.delete-reply-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                if (confirm('确定要删除这条回复吗？')) {
+                    const replyId = this.getAttribute('data-reply-id');
+                    const courseId = markCompleteBtn.getAttribute('data-course-id');
+                    const sectionId = document.querySelector('.section-content:not(.d-none)').id.replace('section-', '');
+
+                    // 发送AJAX请求到后端
+                    fetch(`/delete_reply/${courseId}/${sectionId}/${replyId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // 从DOM中移除回复
+                            const reply = document.getElementById(`reply-${replyId}`);
+                            reply.remove();
+
+                            // 检查是否还有回复，如果没有则移除回复容器
+                            const repliesContainer = reply.closest('.replies');
+                            if (repliesContainer && repliesContainer.querySelectorAll('.reply').length === 0) {
+                                repliesContainer.remove();
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('删除失败，请��试');
+                    });
+                }
+            });
+        });
+    }
+
+    // 为评论绑定所有事件
+    function bindCommentEvents(container = document) {
+        // 绑定回复按钮事件
+        container.querySelectorAll('.reply-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const commentId = this.getAttribute('data-comment-id');
+                const replyForm = document.getElementById(`reply-form-${commentId}`);
+
+                // 切换回复表单的显示状态
+                replyForm.classList.toggle('d-none');
+
+                // 如果显示了表单，聚焦到输入框
+                if (!replyForm.classList.contains('d-none')) {
+                    replyForm.querySelector('input').focus();
+                }
+            });
+        });
+
+        // 绑定删除评论按钮事件
+        container.querySelectorAll('.delete-comment-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                if (confirm('确定要删除这条评论吗？')) {
+                    const commentId = this.getAttribute('data-comment-id');
+                    const courseId = markCompleteBtn.getAttribute('data-course-id');
+                    const sectionId = document.querySelector('.section-content:not(.d-none)').id.replace('section-', '');
+
+                    // 发送AJAX请求到后端
+                    fetch(`/delete_comment/${courseId}/${sectionId}/${commentId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // 从DOM中移除评论
+                            const comment = document.getElementById(`comment-${commentId}`);
+                            comment.remove();
+
+                            // 检查是否还有评论，如果没有则显示提示信息
+                            const commentsSection = document.getElementById(`comments-section-${sectionId}`);
+                            if (commentsSection.querySelectorAll('.comment').length === 0) {
+                                const noCommentsMsg = document.createElement('p');
+                                noCommentsMsg.className = 'text-center text-muted';
+                                noCommentsMsg.textContent = '暂无讨论，成为第一个发表评论的人吧！';
+                                commentsSection.appendChild(noCommentsMsg);
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('删除失败，请重试');
+                    });
+                }
+            });
+        });
+
+        // 绑定回复表单提交事件
+        container.querySelectorAll('.reply-form').forEach(form => {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                const parentId = this.getAttribute('data-parent-id');
+                const content = this.querySelector('input').value;
+                const courseId = markCompleteBtn.getAttribute('data-course-id');
+                const sectionId = document.querySelector('.section-content:not(.d-none)').id.replace('section-', '');
+
+                // 发送AJAX请求到后端
+                fetch(`/add_reply/${courseId}/${sectionId}/${parentId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ content: content })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // 清空回复框并隐藏
+                        this.querySelector('input').value = '';
+                        this.closest('.reply-form-container').classList.add('d-none');
+
+                        // 添加新回复到回复区
+                        const comment = document.getElementById(`comment-${parentId}`);
+                        let repliesContainer = comment.querySelector('.replies');
+
+                        // 如果还没有回复容器，创建一个
+                        if (!repliesContainer) {
+                            repliesContainer = document.createElement('div');
+                            repliesContainer.className = 'replies mt-2 ms-4';
+                            comment.appendChild(repliesContainer);
+                        }
+
+                        const newReply = document.createElement('div');
+                        newReply.className = 'reply p-2 border-start border-3 ps-3 mb-2';
+                        newReply.id = `reply-${data.reply.id}`;
+
+                        newReply.innerHTML = `
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="d-flex align-items-center">
+                                    <img src="${'/static/images/avatar_imgs/' + data.reply.user_avatar}" alt="用户头像5" class="rounded-circle me-2" width="24">
+                                    <span class="fw-bold small">${data.reply.username}</span>
+                                </div>
+                                <div>
+                                    <small class="text-muted me-2">${data.reply.created_at}</small>
+                                    <button class="btn btn-sm btn-outline-danger delete-reply-btn" data-reply-id="${data.reply.id}">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <p class="mb-0 small">${data.reply.content}</p>
+                        `;
+
+                        repliesContainer.appendChild(newReply);
+
+                        // 为新添加的回复绑定删除事件
+                        bindDeleteReplyEvents(newReply);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('回复提交失败，请重试');
+                });
+            });
+        });
+    }
+
+    // 初始化所有事件
+    bindReplyBtnEvents();
+    bindReplyFormEvents();
+    bindDeleteCommentEvents();
+    bindDeleteReplyEvents();
+});
+
+
+document.addEventListener('DOMContentLoaded', function() {
+    // 使用XPath查找符合条件的元素
+    const xpath = '//i[@class="bi bi-circle text-muted me-2"]';
+    const result = document.evaluate(xpath, document, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+
+    if (result.snapshotLength > 0) {
+        // 获取第一个匹配的元素
+        const firstElement = result.snapshotItem(0);
+
+        // 模拟点击第一个元素
+        firstElement.click();
+    } else {
+        console.log('未找到符合条件的元素');
+    }
+});
+</script>
+{% endblock %}
+

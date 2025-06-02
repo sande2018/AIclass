@@ -1,0 +1,708 @@
+{% extends 'admin/base.html' %}
+
+{% block title %}课程内容编辑 - 管理后台{% endblock %}
+{% block page_title %}课程内容编辑{% endblock %}
+
+{% block page_actions %}
+<div class="btn-group">
+    <button type="button" class="btn btn-sm btn-success" id="saveCourseContent">
+        <i class="bi bi-save me-1"></i>保存更改
+    </button>
+    <a href="{{ url_for('admin_content') }}" class="btn btn-sm btn-outline-secondary ms-2">
+        <i class="bi bi-arrow-left me-1"></i>返回列表
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">课程信息</h5>
+            </div>
+            <div class="card-body">
+                <form id="courseInfoForm">
+                    <div class="mb-3">
+                        <label for="courseTitle" class="form-label">课程名称</label>
+                        <input type="text" class="form-control" id="courseTitle" name="title" value="{{ course.title }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="courseDescription" class="form-label">课程描述</label>
+                        <textarea class="form-control" id="courseDescription" name="description" rows="4">{{ course.description }}</textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="courseInstructor" class="form-label">讲师</label>
+                        <input type="text" class="form-control" id="courseInstructor" name="instructor" value="{{ course.instructor }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="courseImage" class="form-label">课程封面图</label>
+                        <div class="input-group mb-2">
+                            <input type="text" class="form-control" id="courseImage" name="image" value="{{ course.image }}">
+                            <button class="btn btn-outline-secondary" type="button" id="uploadImageBtn">上传</button>
+                        </div>
+                        <input type="file" id="imageUpload" class="d-none" accept="image/*">
+                        <div class="form-text">输入图片URL或上传图片</div>
+                        {% if course.image %}
+                        <div class="mt-2">
+                            <img src="{{ course.image }}" alt="课程封面" class="img-thumbnail" style="max-height: 150px;">
+                        </div>
+                        {% endif %}
+                        <div id="imagePreview" class="mt-2 d-none">
+                            <img src="/placeholder.svg" alt="预览" class="img-thumbnail" style="max-height: 150px;">
+                        </div>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="courseActive" name="active" {% if course.is_published %}checked{% endif %}>
+                        <label class="form-check-label" for="courseActive">课程可见</label>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">课程章节</h5>
+                <button type="button" class="btn btn-sm btn-primary" id="addSectionBtn">
+                    <i class="bi bi-plus-circle me-1"></i>添加章节
+                </button>
+            </div>
+            <div class="card-body">
+                <div id="sectionsContainer">
+                    {% if course.sections %}
+                        {% for section in course.sections | sort(attribute='order') %}
+                        <div class="card mb-3 section-card" data-section-id="{{ section.id }}">
+                            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-grip-vertical me-2 text-muted handle"></i>
+                                    <h6 class="mb-0">{{ section.title }}</h6>
+                                </div>
+                                <div class="btn-group">
+                                    <button type="button" class="btn btn-sm btn-outline-primary add-lesson-btn">
+                                        <i class="bi bi-plus-circle"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary edit-section-btn">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger remove-section-btn">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label class="form-label">章节标题</label>
+                                    <input type="text" class="form-control section-title" value="{{ section.title }}">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">视频链接</label>
+                                    <input type="text" class="form-control section-video" value="{{ section.video_url }}">
+                                    <div class="form-text">格式：1335108353.vod-qcloud.com||1397757906766532092</div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">章节介绍</label>
+                                    <textarea class="form-control section-content" rows="3">{{ section.content }}</textarea>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">视频时长（分钟）</label>
+                                    <input type="number" class="form-control section-duration" value="{{ section.duration }}">
+                                </div>
+                                <div class="lessons-container">
+                                    {% if section.lessons %}
+                                        {% for lesson in section.lessons %}
+                                        <div class="card mb-2 lesson-card" data-lesson-id="{{ lesson.id }}">
+                                            <div class="card-body py-2">
+                                                <div class="row align-items-center">
+                                                    <div class="col-auto">
+                                                        <i class="bi bi-grip-vertical text-muted lesson-handle"></i>
+                                                    </div>
+                                                    <div class="col">
+                                                        <input type="text" class="form-control form-control-sm lesson-title" value="{{ lesson.title }}" placeholder="课时标题">
+                                                    </div>
+                                                    <div class="col-auto">
+                                                        <button type="button" class="btn btn-sm btn-outline-danger remove-lesson-btn">
+                                                            <i class="bi bi-trash"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-5" id="noSectionsMessage">
+                            <i class="bi bi-journal-text fs-1 text-muted mb-3"></i>
+                            <h5>该课程暂无章节</h5>
+                            <p class="text-muted">点击"添加章节"按钮开始创建课程内容</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 章节模板 -->
+<template id="sectionTemplate">
+    <div class="card mb-3 section-card" data-section-id="new">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center">
+                <i class="bi bi-grip-vertical me-2 text-muted handle"></i>
+                <h6 class="mb-0">新章节</h6>
+            </div>
+            <div class="btn-group">
+                <button type="button" class="btn btn-sm btn-outline-primary add-lesson-btn">
+                    <i class="bi bi-plus-circle"></i>
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary edit-section-btn">
+                    <i class="bi bi-pencil"></i>
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-danger remove-section-btn">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="mb-3">
+                <label class="form-label">章节标题</label>
+                <input type="text" class="form-control section-title" value="新章节">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">视频链接</label>
+                <input type="text" class="form-control section-video" value="">
+                <div class="form-text">格式：1335108353.vod-qcloud.com||1397757906766532092</div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">章节介绍</label>
+                <textarea class="form-control section-content" rows="3"></textarea>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">视频时长（分钟）</label>
+                <input type="number" class="form-control section-duration" value="0">
+            </div>
+            <div class="lessons-container"></div>
+        </div>
+    </div>
+</template>
+
+<!-- 课时模板 -->
+<template id="lessonTemplate">
+    <div class="card mb-2 lesson-card" data-lesson-id="new">
+        <div class="card-body py-2">
+            <div class="row align-items-center">
+                <div class="col-auto">
+                    <i class="bi bi-grip-vertical text-muted lesson-handle"></i>
+                </div>
+                <div class="col">
+                    <input type="text" class="form-control form-control-sm lesson-title" value="新课时" placeholder="课时标题">
+                </div>
+                <div class="col-auto">
+                    <button type="button" class="btn btn-sm btn-outline-danger remove-lesson-btn">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+
+<!-- 章节编辑模态框 -->
+<div class="modal fade" id="sectionModal" tabindex="-1" aria-labelledby="sectionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="sectionModalLabel">编辑章节</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="sectionForm">
+                    <input type="hidden" id="modalSectionId">
+                    <div class="mb-3">
+                        <label for="modalSectionTitle" class="form-label">章节标题</label>
+                        <input type="text" class="form-control" id="modalSectionTitle" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="modalSectionVideo" class="form-label">视频链接</label>
+                        <input type="text" class="form-control" id="modalSectionVideo">
+                        <div class="form-text">格式：1335108353.vod-qcloud.com||1397757906766532092</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="modalSectionContent" class="form-label">章节介绍</label>
+                        <textarea class="form-control" id="modalSectionContent" rows="5"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="modalSectionDuration" class="form-label">视频时长（分钟）</label>
+                        <input type="number" class="form-control" id="modalSectionDuration" value="0">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="saveSectionBtn">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- 引入Sortable.js库 -->
+<script src="{{ url_for('static', filename='Sortable.min.js') }}"></script>
+
+
+<script>
+// 等待DOM完全加载
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM已加载，初始化页面功能');
+
+    // 全局变量
+    let sectionModal = null;
+
+    // 初始化Bootstrap模态框
+    try {
+        const modalElement = document.getElementById('sectionModal');
+        if (modalElement) {
+            sectionModal = new bootstrap.Modal(modalElement);
+            console.log('模态框初始化成功');
+        } else {
+            console.error('未找到模态框元素');
+        }
+    } catch (error) {
+        console.error('模态框初始化失败:', error);
+    }
+
+    // 初始化拖拽排序
+    initSortable();
+
+    // 绑定上传图片按钮事件
+    const uploadImageBtn = document.getElementById('uploadImageBtn');
+    if (uploadImageBtn) {
+        uploadImageBtn.onclick = function(e) {
+            console.log('点击了上传按钮');
+            e.preventDefault();
+            const imageUpload = document.getElementById('imageUpload');
+            if (imageUpload) {
+                imageUpload.click();
+            } else {
+                console.error('未找到图片上传输入框');
+            }
+        };
+    } else {
+        console.error('未找到上传按钮');
+    }
+
+    // 绑定图片上传事件
+    const imageUpload = document.getElementById('imageUpload');
+    if (imageUpload) {
+        imageUpload.onchange = function(e) {
+            console.log('选择了文件:', e.target.files);
+            if (e.target.files.length > 0) {
+                const file = e.target.files[0];
+
+                // 预览图片
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const preview = document.getElementById('imagePreview');
+                    if (preview) {
+                        const previewImg = preview.querySelector('img');
+                        if (previewImg) {
+                            previewImg.src = e.target.result;
+                            preview.classList.remove('d-none');
+                        }
+                    }
+                };
+                reader.readAsDataURL(file);
+
+                // 上传图片
+                const formData = new FormData();
+                formData.append('image', file);
+
+                fetch('/admin/api/upload_image', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => {
+                    console.log('上传响应状态:', response.status);
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('上传响应数据:', data);
+                    if (data.success) {
+                        const courseImage = document.getElementById('courseImage');
+                        if (courseImage) {
+                            courseImage.value = data.image_url;
+                        }
+                        alert('图片上传成功');
+                    } else {
+                        alert('上传失败: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('上传错误:', error);
+                    alert('上传失败，请查看控制台获取详细信息');
+                });
+            }
+        };
+    } else {
+        console.error('未找到图片上传输入框');
+    }
+
+    // 添加章节按钮事件
+    const addSectionBtn = document.getElementById('addSectionBtn');
+    if (addSectionBtn) {
+        addSectionBtn.onclick = function() {
+            console.log('点击了添加章节按钮');
+
+            // 获取模板并克隆
+            const template = document.getElementById('sectionTemplate');
+            if (!template) {
+                console.error('未找到章节模板');
+                return;
+            }
+
+            const clone = document.importNode(template.content, true);
+
+            // 如果有"暂无章节"的提示，则移除
+            const noSectionsMessage = document.getElementById('noSectionsMessage');
+            if (noSectionsMessage) {
+                noSectionsMessage.remove();
+            }
+
+            // 添加到容器
+            const sectionsContainer = document.getElementById('sectionsContainer');
+            if (sectionsContainer) {
+                sectionsContainer.appendChild(clone);
+
+                // 获取新添加的章节卡片
+                const sectionCard = sectionsContainer.lastElementChild;
+
+                // 绑定事件
+                bindSectionEvents(sectionCard);
+
+                // 重新初始化拖拽排序
+                initSortable();
+            } else {
+                console.error('未找到章节容器');
+            }
+        };
+    } else {
+        console.error('未找到添加章节按钮');
+    }
+
+    // 为现有章节绑定事件
+    document.querySelectorAll('.section-card').forEach(function(sectionCard) {
+        bindSectionEvents(sectionCard);
+    });
+
+    // 保存章节按钮事件
+    const saveSectionBtn = document.getElementById('saveSectionBtn');
+    if (saveSectionBtn) {
+        saveSectionBtn.onclick = function() {
+            console.log('点击了保存章节按钮');
+
+            const sectionId = document.getElementById('modalSectionId').value;
+            const title = document.getElementById('modalSectionTitle').value;
+            const video = document.getElementById('modalSectionVideo').value;
+            const content = document.getElementById('modalSectionContent').value;
+            const duration = document.getElementById('modalSectionDuration').value;
+
+            console.log('保存章节数据:', { sectionId, title, video, content, duration });
+
+            // 找到对应的章节卡片
+            const sectionCard = document.querySelector(`.section-card[data-section-id="${sectionId}"]`);
+            if (sectionCard) {
+                // 更新章节信息
+                const titleInput = sectionCard.querySelector('.section-title');
+                if (titleInput) titleInput.value = title;
+
+                const videoInput = sectionCard.querySelector('.section-video');
+                if (videoInput) videoInput.value = video;
+
+                const contentInput = sectionCard.querySelector('.section-content');
+                if (contentInput) contentInput.value = content;
+
+                const durationInput = sectionCard.querySelector('.section-duration');
+                if (durationInput) durationInput.value = duration;
+
+                const titleDisplay = sectionCard.querySelector('h6');
+                if (titleDisplay) titleDisplay.textContent = title;
+
+                // 隐藏模态框
+                if (sectionModal) {
+                    sectionModal.hide();
+                }
+            } else {
+                console.error('未找到章节卡片:', sectionId);
+            }
+        };
+    } else {
+        console.error('未找到保存章节按钮');
+    }
+
+    // 保存课程内容按钮事件
+    const saveCourseContent = document.getElementById('saveCourseContent');
+    if (saveCourseContent) {
+        saveCourseContent.onclick = function() {
+            console.log('点击了保存课程内容按钮');
+
+            // 收集课程信息
+            const courseData = {
+                id: {{ course.id }},
+                title: document.getElementById('courseTitle')?.value || '',
+                description: document.getElementById('courseDescription')?.value || '',
+                instructor: document.getElementById('courseInstructor')?.value || '',
+                image: document.getElementById('courseImage')?.value || '',
+                is_published: document.getElementById('courseActive')?.checked || false,
+                sections: []
+            };
+
+            // 收集章节和课时信息
+            document.querySelectorAll('.section-card').forEach(function(sectionEl, sectionIndex) {
+                const section = {
+                    id: sectionEl.dataset.sectionId,
+                    title: sectionEl.querySelector('.section-title')?.value || '',
+                    content: sectionEl.querySelector('.section-content')?.value || '',
+                    video_url: sectionEl.querySelector('.section-video')?.value || '',
+                    duration: parseInt(sectionEl.querySelector('.section-duration')?.value) || 0,
+                    order: sectionIndex,
+                    lessons: []
+                };
+
+                sectionEl.querySelectorAll('.lesson-card').forEach(function(lessonEl, lessonIndex) {
+                    section.lessons.push({
+                        id: lessonEl.dataset.lessonId,
+                        title: lessonEl.querySelector('.lesson-title')?.value || '',
+                        order: lessonIndex
+                    });
+                });
+
+                courseData.sections.push(section);
+            });
+
+            console.log('提交课程数据:', courseData);
+
+            // 发送到服务器
+            fetch(`/admin/api/courses/${courseData.id}/update`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(courseData)
+            })
+            .then(response => {
+                console.log('响应状态:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('服务器响应:', data);
+                if (data.success) {
+                    alert('课程内容已保存');
+                    // 重新加载页面以显示更新后的数据
+                    window.location.reload();
+                } else {
+                    alert('保存失败: ' + (data.message || '未知错误'));
+                }
+            })
+            .catch(error => {
+                console.error('保存错误:', error);
+                alert('保存失败，请查看控制台获取详细信息');
+            });
+        };
+    } else {
+        console.error('未找到保存课程内容按钮');
+    }
+
+    // 初始化拖拽排序
+    function initSortable() {
+        console.log('初始化拖拽排序');
+
+        // 章节排序
+        const sectionsContainer = document.getElementById('sectionsContainer');
+        if (sectionsContainer) {
+            try {
+                new Sortable(sectionsContainer, {
+                    handle: '.handle',
+                    animation: 150,
+                    ghostClass: 'bg-light'
+                });
+                console.log('章节排序初始化成功');
+            } catch (error) {
+                console.error('章节排序初始化失败:', error);
+            }
+        } else {
+            console.error('未找到章节容器');
+        }
+
+        // 课时排序
+        document.querySelectorAll('.lessons-container').forEach(function(container, index) {
+            try {
+                new Sortable(container, {
+                    handle: '.lesson-handle',
+                    animation: 150,
+                    ghostClass: 'bg-light'
+                });
+                console.log(`课时排序 #${index+1} 初始化成功`);
+            } catch (error) {
+                console.error(`课时排序 #${index+1} 初始化失败:`, error);
+            }
+        });
+    }
+
+    // 绑定章节相关事件
+    function bindSectionEvents(sectionCard) {
+        if (!sectionCard) {
+            console.error('无效的章节卡片');
+            return;
+        }
+
+        console.log('绑定章节事件:', sectionCard);
+
+        // 章节标题输入事件
+        const titleInput = sectionCard.querySelector('.section-title');
+        if (titleInput) {
+            titleInput.oninput = function() {
+                const titleDisplay = sectionCard.querySelector('h6');
+                if (titleDisplay) {
+                    titleDisplay.textContent = this.value;
+                }
+            };
+        } else {
+            console.error('未找到章节标题输入框');
+        }
+
+        // 添加课时按钮事件
+        const addLessonBtn = sectionCard.querySelector('.add-lesson-btn');
+        if (addLessonBtn) {
+            addLessonBtn.onclick = function() {
+                console.log('点击了添加课时按钮');
+
+                // 获取模板并克隆
+                const template = document.getElementById('lessonTemplate');
+                if (!template) {
+                    console.error('未找到课时模板');
+                    return;
+                }
+
+                const clone = document.importNode(template.content, true);
+
+                // 添加到容器
+                const lessonsContainer = sectionCard.querySelector('.lessons-container');
+                if (lessonsContainer) {
+                    lessonsContainer.appendChild(clone);
+
+                    // 获取新添加的课时卡片
+                    const lessonCard = lessonsContainer.lastElementChild;
+
+                    // 绑定删除课时事件
+                    const removeLessonBtn = lessonCard.querySelector('.remove-lesson-btn');
+                    if (removeLessonBtn) {
+                        removeLessonBtn.onclick = function() {
+                            if (confirm('确定要删除这个课时吗？')) {
+                                lessonCard.remove();
+                            }
+                        };
+                    } else {
+                        console.error('未找到删除课时按钮');
+                    }
+
+                    // 重新初始化拖拽排序
+                    initSortable();
+                } else {
+                    console.error('未找到课时容器');
+                }
+            };
+        } else {
+            console.error('未找到添加课时按钮');
+        }
+
+        // 编辑章节按钮事件
+        const editSectionBtn = sectionCard.querySelector('.edit-section-btn');
+        if (editSectionBtn) {
+            editSectionBtn.onclick = function() {
+                console.log('点击了编辑章节按钮');
+
+                const sectionId = sectionCard.dataset.sectionId;
+                const title = sectionCard.querySelector('.section-title')?.value || '';
+                const video = sectionCard.querySelector('.section-video')?.value || '';
+                const content = sectionCard.querySelector('.section-content')?.value || '';
+                const duration = sectionCard.querySelector('.section-duration')?.value || '0';
+
+                // 填充模态框
+                const modalSectionId = document.getElementById('modalSectionId');
+                if (modalSectionId) modalSectionId.value = sectionId;
+
+                const modalSectionTitle = document.getElementById('modalSectionTitle');
+                if (modalSectionTitle) modalSectionTitle.value = title;
+
+                const modalSectionVideo = document.getElementById('modalSectionVideo');
+                if (modalSectionVideo) modalSectionVideo.value = video;
+
+                const modalSectionContent = document.getElementById('modalSectionContent');
+                if (modalSectionContent) modalSectionContent.value = content;
+
+                const modalSectionDuration = document.getElementById('modalSectionDuration');
+                if (modalSectionDuration) modalSectionDuration.value = duration;
+
+                // 显示模态框
+                if (sectionModal) {
+                    sectionModal.show();
+                } else {
+                    console.error('模态框未初始化');
+                }
+            };
+        } else {
+            console.error('未找到编辑章节按钮');
+        }
+
+        // 删除章节按钮事件
+        const removeSectionBtn = sectionCard.querySelector('.remove-section-btn');
+        if (removeSectionBtn) {
+            removeSectionBtn.onclick = function() {
+                console.log('点击了删除章节按钮');
+
+                if (confirm('确定要删除这个章节吗？这将同时删除所有课时。')) {
+                    sectionCard.remove();
+
+                    // 如果没有章节了，显示"暂无章节"的提示
+                    if (document.querySelectorAll('.section-card').length === 0) {
+                        const sectionsContainer = document.getElementById('sectionsContainer');
+                        if (sectionsContainer) {
+                            const noSectionsMessage = `
+                            <div class="text-center py-5" id="noSectionsMessage">
+                                <i class="bi bi-journal-text fs-1 text-muted mb-3"></i>
+                                <h5>该课程暂无章节</h5>
+                                <p class="text-muted">点击"添加章节"按钮开始创建课程内容</p>
+                            </div>`;
+                            sectionsContainer.innerHTML = noSectionsMessage;
+                        }
+                    }
+                }
+            };
+        } else {
+            console.error('未找到删除章节按钮');
+        }
+
+        // 为现有课时绑定删除事件
+        const removeLessonBtns = sectionCard.querySelectorAll('.remove-lesson-btn');
+        removeLessonBtns.forEach(function(btn) {
+            btn.onclick = function() {
+                console.log('点击了删除课时按钮');
+
+                if (confirm('确定要删除这个课时吗？')) {
+                    const lessonCard = btn.closest('.lesson-card');
+                    if (lessonCard) {
+                        lessonCard.remove();
+                    } else {
+                        console.error('未找到课时卡片');
+                    }
+                }
+            };
+        });
+    }
+});
+</script>
+{% endblock %}
+

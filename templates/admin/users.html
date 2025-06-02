@@ -1,0 +1,338 @@
+{% extends 'admin/base.html' %}
+
+{% block title %}用户管理 - 管理后台{% endblock %}
+{% block page_title %}用户管理{% endblock %}
+
+{% block page_actions %}
+<button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">
+    <i class="bi bi-person-plus me-1"></i>添加用户
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-body">
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <input type="text" class="form-control" placeholder="搜索用户..." id="user-search">
+                    <button class="btn btn-outline-secondary" type="button">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="col-md-6 text-md-end">
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-outline-secondary" id="filter-all">全部</button>
+                    <button type="button" class="btn btn-outline-secondary" id="filter-active">活跃</button>
+                    <button type="button" class="btn btn-outline-secondary" id="filter-inactive">禁用</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>用户名</th>
+                        <th>手机号</th>
+                        <th>邮箱</th>
+                        <th>注册时间</th>
+                        <th>最近登录</th>
+                        <th>状态</th>
+                        <th>角色</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr data-status="{{ 'active' if user.is_active else 'inactive' }}">
+                        <td>{{ user.id }}</td>
+                        <td>{{ user.username }}</td>
+                        <td>{{ user.phone }}</td>
+                        <td>{{ user.email }}</td>
+                        <td>{{ user.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>{{ user.last_login }}</td>
+                        <td>
+                            {% if user.is_active %}
+                            <span class="badge bg-success">活跃</span>
+                            {% else %}
+                            <span class="badge bg-danger">禁用</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if user.is_admin %}
+                            <span class="badge bg-primary">管理员</span>
+                            {% else %}
+                            <span class="badge bg-secondary">学员</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <button type="button" class="btn btn-outline-primary edit-user-btn"
+                                        data-id="{{ user.id }}"
+                                        data-username="{{ user.username }}"
+                                        data-email="{{ user.email }}"
+                                        data-phone="{{ user.phone }}"
+                                        data-is-active="{{ user.is_active|int }}"
+                                        data-is-admin="{{ user.is_admin|int }}"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#editUserModal">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button type="button" class="btn btn-outline-danger delete-user-btn"
+                                        data-id="{{ user.id }}"
+                                        data-username="{{ user.username }}"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#deleteUserModal">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center">暂无用户数据</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 分页 -->
+        {% if pagination.pages > 1 %}
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center">
+                <li class="page-item {{ 'disabled' if pagination.page == 1 else '' }}">
+                    <a class="page-link" href="{{ url_for('admin_users', page=pagination.page-1) if pagination.page > 1 else '#' }}">上一页</a>
+                </li>
+
+                {% for p in range(1, pagination.pages + 1) %}
+                <li class="page-item {{ 'active' if p == pagination.page else '' }}">
+                    <a class="page-link" href="{{ url_for('admin_users', page=p) }}">{{ p }}</a>
+                </li>
+                {% endfor %}
+
+                <li class="page-item {{ 'disabled' if pagination.page == pagination.pages else '' }}">
+                    <a class="page-link" href="{{ url_for('admin_users', page=pagination.page+1) if pagination.page < pagination.pages else '#' }}">下一页</a>
+                </li>
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+
+<!-- 添加用户模态框 -->
+<div class="modal fade" id="addUserModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">添加用户</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ url_for('admin_add_user') }}" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="add-username" class="form-label">用户名</label>
+                        <input type="text" class="form-control" id="add-username" name="username" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="add-phone" class="form-label">手机号</label>
+                        <input type="text" class="form-control" id="add-phone" name="phone" pattern="[0-9]{11}" title="请输入11位手机号码">
+                        <small class="form-text text-muted">邮箱和手机号至少填写一项</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="add-email" class="form-label">邮箱</label>
+                        <input type="email" class="form-control" id="add-email" name="email">
+                        <small class="form-text text-muted">邮箱和手机号至少填写一项</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="add-password" class="form-label">密码</label>
+                        <input type="password" class="form-control" id="add-password" name="password" required>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="add-is-active" name="is_active" checked>
+                            <label class="form-check-label" for="add-is-active">账号激活</label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="add-is-admin" name="is_admin">
+                            <label class="form-check-label" for="add-is-admin">管理员权限</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">添加</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑用户模态框 -->
+<div class="modal fade" id="editUserModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">编辑用户</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ url_for('admin_edit_user') }}" method="POST">
+                <div class="modal-body">
+                    <input type="hidden" id="edit-user-id" name="user_id">
+                    <div class="mb-3">
+                        <label for="edit-username" class="form-label">用户名</label>
+                        <input type="text" class="form-control" id="edit-username" name="username" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit-phone" class="form-label">手机号</label>
+                        <input type="text" class="form-control" id="edit-phone" name="phone" pattern="[0-9]{11}" title="请输入11位手机号码">
+                        <small class="form-text text-muted">邮箱和手机号至少填写一项</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit-email" class="form-label">邮箱</label>
+                        <input type="email" class="form-control" id="edit-email" name="email">
+                        <small class="form-text text-muted">邮箱和手机号至少填写一项</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit-password" class="form-label">密码 (留空表示不修改)</label>
+                        <input type="text" class="form-control" id="edit-password" name="password">
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="edit-is-active" name="is_active">
+                            <label class="form-check-label" for="edit-is-active">账号激活</label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="edit-is-admin" name="is_admin">
+                            <label class="form-check-label" for="edit-is-admin">管理员权限</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 删除用户确认模态框 -->
+<div class="modal fade" id="deleteUserModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">确认删除</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>您确定要删除用户 <strong id="delete-username"></strong> 吗？此操作不可撤销。</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <form action="{{ url_for('admin_delete_user') }}" method="POST">
+                    <input type="hidden" id="delete-user-id" name="user_id">
+                    <button type="submit" class="btn btn-danger">删除</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 用户搜索功能
+    const searchInput = document.getElementById('user-search');
+    const userRows = document.querySelectorAll('tbody tr');
+
+    searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+
+        userRows.forEach(row => {
+            if (row.querySelector('td:first-child').textContent === '暂无用户数据') return;
+
+            const username = row.querySelector('td:nth-child(2)').textContent.toLowerCase();
+            const email = row.querySelector('td:nth-child(3)').textContent.toLowerCase();
+
+            if (username.includes(searchTerm) || email.includes(searchTerm)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+
+    // 状态过滤
+    document.getElementById('filter-all').addEventListener('click', function() {
+        userRows.forEach(row => {
+            row.style.display = '';
+        });
+    });
+
+    document.getElementById('filter-active').addEventListener('click', function() {
+        userRows.forEach(row => {
+            if (row.dataset.status === 'active') {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+
+    document.getElementById('filter-inactive').addEventListener('click', function() {
+        userRows.forEach(row => {
+            if (row.dataset.status === 'inactive') {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+
+    // 编辑用户按钮点击事件
+    const editButtons = document.querySelectorAll('.edit-user-btn');
+    editButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const userId = this.dataset.id;
+            const username = this.dataset.username;
+            const email = this.dataset.email;
+            const phone = this.dataset.phone;
+            const isActive = parseInt(this.dataset.isActive);
+            const isAdmin = parseInt(this.dataset.isAdmin);
+
+            document.getElementById('edit-user-id').value = userId;
+            document.getElementById('edit-username').value = username;
+            document.getElementById('edit-email').value = email;
+            document.getElementById('edit-phone').value = phone;
+            document.getElementById('edit-is-active').checked = isActive === 1;
+            document.getElementById('edit-is-admin').checked = isAdmin === 1;
+
+            $('#editUserModal input[name="email"]').val($(this).data('email') || '');
+            $('#editUserModal input[name="phone"]').val($(this).data('phone') || '');
+        });
+    });
+    
+    // 删除用户按钮点击事件
+    const deleteButtons = document.querySelectorAll('.delete-user-btn');
+    deleteButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const userId = this.dataset.id;
+            const username = this.dataset.username;
+            
+            document.getElementById('delete-user-id').value = userId;
+            document.getElementById('delete-username').textContent = username;
+        });
+    });
+});
+</script>
+{% endblock %}
+

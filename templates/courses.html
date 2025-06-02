@@ -1,0 +1,341 @@
+{% extends 'base.html' %}
+
+{% block title %}课程列表 - AI 百工坊学堂{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1 class="mb-3">课程目录</h1>
+        <p class="lead">浏览我们提供的所有课程，开始您的学习之旅</p>
+    </div>
+    <div class="col-md-4">
+        <div class="input-group mt-3">
+            <input type="text" class="form-control" placeholder="搜索课程..." id="course-search">
+            <button class="btn btn-primary" type="button">
+                <i class="bi bi-search"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <!-- 桌面端显示按钮组 -->
+        <div class="btn-group d-none d-md-flex" role="group" id="category-filters-desktop">
+            <!-- 标签按钮将由JavaScript动态生成 -->
+        </div>
+
+        <!-- 移动端显示下拉框 -->
+        <div class="d-md-none mb-3">
+            <select class="form-select" id="category-filters-mobile">
+                <!-- 下拉选项将由JavaScript动态生成 -->
+            </select>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4" id="courses-container">
+    {% for course in courses %}
+    <div class="col-md-6 col-lg-4 course-card" data-categories="">
+        <div class="card h-100 shadow-sm">
+            <img src="{{ course.image }}" class="card-img-top" style="width: 100%; height: 200px; object-fit: fill;" alt="{{ course.title }}">
+            <div class="card-body">
+                <h5 class="card-title">{{ course.title }}</h5>
+                <p class="card-text">{{ course.description }}</p>
+            </div>
+            <div class="card-footer bg-transparent border-top-0 d-flex justify-content-between align-items-center">
+                {% if course.price > 0 %}
+                <span class="badge bg-danger">¥{{ "%.2f"|format(course.price) }}</span>
+                {% else %}
+                <span class="badge bg-primary">免费</span>
+                {% endif %}
+                {% if course.id in enrolled_course_ids %}
+                <a href="{{ url_for('course_content', course_id=course.id) }}" class="btn btn-success">去学习</a>
+                {% else %}
+                    {% if course.price > 0 %}
+                    <a href="{{ url_for('purchase', course_id=course.id) }}" class="btn btn-primary">前往购买</a>
+                    {% else %}
+                    <a href="{{ url_for('enroll', course_id=course.id) }}" class="btn btn-primary">立即报名</a>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-12 text-center py-5">
+        <p>暂无课程信息</p>
+    </div>
+    {% endfor %}
+</div>
+
+<nav aria-label="Page navigation" class="mt-5">
+    <ul class="pagination justify-content-center" id="pagination">
+        <!-- 分页将由JavaScript动态生成 -->
+    </ul>
+</nav>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 定义标签和关键词的映射关系
+    const categoryKeywords = {
+        "趣味编程": ["趣味","21小时"],
+        "编程基础": ["链程", "元构"],
+        "编程进阶": ["矿程", "数瞳"],
+        "编程实战": ["实战项目"],
+        "技能证书": ["人工智能训练师"]
+    };
+
+    // 动态生成桌面端标签按钮
+    const categoryFiltersDesktop = document.getElementById('category-filters-desktop');
+    // 添加"全部"按钮
+    const allButtonDesktop = document.createElement('button');
+    allButtonDesktop.type = 'button';
+    allButtonDesktop.className = 'btn btn-outline-primary active';
+    allButtonDesktop.setAttribute('data-filter', 'all');
+    allButtonDesktop.textContent = '全部';
+    categoryFiltersDesktop.appendChild(allButtonDesktop);
+
+    // 动态生成移动端下拉框选项
+    const categoryFiltersMobile = document.getElementById('category-filters-mobile');
+    // 添加"全部"选项
+    const allOptionMobile = document.createElement('option');
+    allOptionMobile.value = 'all';
+    allOptionMobile.textContent = '全部';
+    categoryFiltersMobile.appendChild(allOptionMobile);
+
+    // 为每个类别添加按钮和选项
+    for (const category in categoryKeywords) {
+        // 桌面端按钮
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'btn btn-outline-primary';
+        button.setAttribute('data-filter', category);
+        button.textContent = category;
+        categoryFiltersDesktop.appendChild(button);
+
+        // 移动端选项
+        const option = document.createElement('option');
+        option.value = category;
+        option.textContent = category;
+        categoryFiltersMobile.appendChild(option);
+    }
+
+    // 获取所有课程卡片
+    const courseCards = document.querySelectorAll('.course-card');
+    let totalCourses = courseCards.length;
+
+    // 为每个课程分配标签类别
+    courseCards.forEach(card => {
+        const title = card.querySelector('.card-title').textContent.toLowerCase();
+        const description = card.querySelector('.card-text').textContent.toLowerCase();
+        const content = title + ' ' + description;
+
+        // 检查内容中是否包含各类别的关键词
+        let categories = [];
+        for (const [category, keywords] of Object.entries(categoryKeywords)) {
+            for (const keyword of keywords) {
+                if (content.includes(keyword.toLowerCase())) {
+                    categories.push(category);
+                    break; // 找到一个关键词匹配就足够了
+                }
+            }
+        }
+
+        // 如果没有匹配任何类别，设为"其他"
+        if (categories.length === 0) {
+            categories.push('other');
+        }
+
+        // 将类别保存到数据属性中
+        card.setAttribute('data-categories', categories.join(','));
+    });
+
+    // 分页设置
+    const itemsPerPage = 9; // 每页显示9个课程
+    let currentPage = 1;
+    let filteredCourses = [...courseCards]; // 初始时显示所有课程
+
+    // 课程搜索功能
+    const searchInput = document.getElementById('course-search');
+    searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        filterAndDisplayCourses(searchTerm);
+    });
+
+    // 桌面端课程分类过滤
+    const filterButtons = document.querySelectorAll('#category-filters-desktop button');
+    filterButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            // 移除所有按钮的active类
+            filterButtons.forEach(btn => btn.classList.remove('active'));
+            // 添加当前按钮的active类
+            this.classList.add('active');
+
+            // 同步移动端下拉框选择
+            categoryFiltersMobile.value = this.getAttribute('data-filter');
+
+            const filter = this.getAttribute('data-filter');
+            filterAndDisplayCourses(searchInput.value.toLowerCase(), filter);
+        });
+    });
+
+    // 移动端课程分类过滤
+    categoryFiltersMobile.addEventListener('change', function() {
+        const filter = this.value;
+
+        // 同步桌面端按钮选择
+        filterButtons.forEach(btn => {
+            if (btn.getAttribute('data-filter') === filter) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+
+        filterAndDisplayCourses(searchInput.value.toLowerCase(), filter);
+    });
+
+    // 过滤和显示课程的函数
+    function filterAndDisplayCourses(searchTerm = '', categoryFilter = 'all') {
+        filteredCourses = [...courseCards].filter(card => {
+            const title = card.querySelector('.card-title').textContent.toLowerCase();
+            const description = card.querySelector('.card-text').textContent.toLowerCase();
+            const categories = card.getAttribute('data-categories').split(',');
+
+            // 搜索词过滤
+            const matchesSearch = searchTerm === '' || title.includes(searchTerm) || description.includes(searchTerm);
+
+            // 类别过滤
+            const matchesCategory = categoryFilter === 'all' || categories.includes(categoryFilter);
+
+            return matchesSearch && matchesCategory;
+        });
+
+        // 重置到第一页
+        currentPage = 1;
+
+        // 更新分页和显示
+        updatePagination();
+        displayCourses();
+    }
+
+    // 更新分页控件
+    function updatePagination() {
+        const totalPages = Math.ceil(filteredCourses.length / itemsPerPage);
+        const pagination = document.getElementById('pagination');
+        pagination.innerHTML = '';
+
+        // 如果只有一页，不显示分页
+        if (totalPages <= 1) {
+            pagination.style.display = 'none';
+            return;
+        } else {
+            pagination.style.display = 'flex';
+        }
+
+        // 上一页按钮
+        const prevLi = document.createElement('li');
+        prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
+        const prevLink = document.createElement('a');
+        prevLink.className = 'page-link';
+        prevLink.href = '#';
+        prevLink.textContent = '上一页';
+        prevLink.setAttribute('aria-label', 'Previous');
+        if (currentPage > 1) {
+            prevLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                currentPage--;
+                updatePagination();
+                displayCourses();
+            });
+        }
+        prevLi.appendChild(prevLink);
+        pagination.appendChild(prevLi);
+
+        // 页码按钮
+        const maxVisiblePages = 5; // 最多显示5个页码
+        let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+        let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+        // 调整startPage，确保显示maxVisiblePages个页码
+        if (endPage - startPage + 1 < maxVisiblePages && startPage > 1) {
+            startPage = Math.max(1, endPage - maxVisiblePages + 1);
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+            const pageLi = document.createElement('li');
+            pageLi.className = `page-item ${i === currentPage ? 'active' : ''}`;
+            const pageLink = document.createElement('a');
+            pageLink.className = 'page-link';
+            pageLink.href = '#';
+            pageLink.textContent = i;
+            pageLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                currentPage = i;
+                updatePagination();
+                displayCourses();
+            });
+            pageLi.appendChild(pageLink);
+            pagination.appendChild(pageLi);
+        }
+
+        // 下一页按钮
+        const nextLi = document.createElement('li');
+        nextLi.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
+        const nextLink = document.createElement('a');
+        nextLink.className = 'page-link';
+        nextLink.href = '#';
+        nextLink.textContent = '下一页';
+        nextLink.setAttribute('aria-label', 'Next');
+        if (currentPage < totalPages) {
+            nextLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                currentPage++;
+                updatePagination();
+                displayCourses();
+            });
+        }
+        nextLi.appendChild(nextLink);
+        pagination.appendChild(nextLi);
+    }
+
+    // 显示当前页的课程
+    function displayCourses() {
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+
+        // 先隐藏所有课程
+        courseCards.forEach(card => {
+            card.style.display = 'none';
+        });
+
+        // 显示当前页的课程
+        filteredCourses.slice(startIndex, endIndex).forEach(card => {
+            card.style.display = '';
+        });
+
+        // 如果没有课程显示，显示"暂无课程"消息
+        const noCoursesMessage = document.querySelector('.col-12.text-center.py-5');
+        if (filteredCourses.length === 0) {
+            if (!noCoursesMessage) {
+                const message = document.createElement('div');
+                message.className = 'col-12 text-center py-5';
+                message.innerHTML = '<p>没有找到匹配的课程</p>';
+                document.getElementById('courses-container').appendChild(message);
+            } else {
+                noCoursesMessage.style.display = '';
+            }
+        } else if (noCoursesMessage) {
+            noCoursesMessage.style.display = 'none';
+        }
+    }
+
+    // 初始化分页和显示
+    updatePagination();
+    displayCourses();
+});
+</script>
+{% endblock %}
+

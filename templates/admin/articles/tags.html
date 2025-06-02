@@ -1,0 +1,143 @@
+{% extends "admin/base.html" %}
+
+{% block title %}文章标签管理{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h3 mb-4 text-gray-800">文章标签管理</h1>
+    
+    <div class="row">
+        <!-- 标签列表 -->
+        <div class="col-md-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">标签列表</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>名称</th>
+                                    <th>文章数</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for tag in tags %}
+                                <tr>
+                                    <td>{{ tag.id }}</td>
+                                    <td>{{ tag.name }}</td>
+                                    <td>{{ tag.articles.count() }}</td>
+                                    <td>
+                                        <button type="button" class="btn btn-primary btn-sm edit-tag" 
+                                                data-id="{{ tag.id }}" 
+                                                data-name="{{ tag.name }}">
+                                            <i class="fas fa-edit"></i> 编辑
+                                        </button>
+                                        <button type="button" class="btn btn-danger btn-sm" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#deleteModal{{ tag.id }}">
+                                            <i class="fas fa-trash"></i> 删除
+                                        </button>
+                                        
+                                        <!-- 删除确认模态框 -->
+                                        <div class="modal fade" id="deleteModal{{ tag.id }}" tabindex="-1" aria-labelledby="deleteModalLabel{{ tag.id }}" aria-hidden="true">
+                                            <div class="modal-dialog">
+                                                <div class="modal-content">
+                                                    <div class="modal-header">
+                                                        <h5 class="modal-title" id="deleteModalLabel{{ tag.id }}">确认删除</h5>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                    </div>
+                                                    <div class="modal-body">
+                                                        确定要删除标签 "{{ tag.name }}" 吗？
+                                                        {% if tag.articles.count() > 0 %}
+                                                        <div class="alert alert-warning mt-3">
+                                                            此标签下有 {{ tag.articles.count() }} 篇文章，删除标签将会从这些文章中移除此标签。
+                                                        </div>
+                                                        {% endif %}
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                                                        <form action="{{ url_for('article.admin_article_tags') }}" method="post">
+                                                            <input type="hidden" name="action" value="delete">
+                                                            <input type="hidden" name="tag_id" value="{{ tag.id }}">
+                                                            <button type="submit" class="btn btn-danger">确认删除</button>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-center">暂无标签</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 添加/编辑标签 -->
+        <div class="col-md-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary" id="form-title">添加标签</h6>
+                </div>
+                <div class="card-body">
+                    <form action="{{ url_for('article.admin_article_tags') }}" method="post" id="tag-form">
+                        <input type="hidden" name="action" value="add" id="form-action">
+                        <input type="hidden" name="tag_id" value="" id="tag-id">
+                        
+                        <div class="mb-3">
+                            <label for="name" class="form-label">标签名称</label>
+                            <input type="text" class="form-control" id="name" name="name" required>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary" id="submit-btn">添加</button>
+                            <button type="button" class="btn btn-secondary d-none" id="cancel-btn">取消</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+    $(document).ready(function() {
+        // 编辑标签
+        $('.edit-tag').click(function() {
+            const id = $(this).data('id');
+            const name = $(this).data('name');
+            
+            $('#form-title').text('编辑标签');
+            $('#form-action').val('edit');
+            $('#tag-id').val(id);
+            $('#name').val(name);
+            $('#submit-btn').text('更新');
+            $('#cancel-btn').removeClass('d-none');
+        });
+        
+        // 取消编辑
+        $('#cancel-btn').click(function() {
+            $('#form-title').text('添加标签');
+            $('#form-action').val('add');
+            $('#tag-id').val('');
+            $('#name').val('');
+            $('#submit-btn').text('添加');
+            $(this).addClass('d-none');
+        });
+    });
+</script>
+{% endblock %}
+
