@@ -42,8 +42,8 @@ db.init_app(app)
 
 # 富友支付配置
 FUIOU_CONFIG = {
-    'mchnt_cd': '0005810F3853948',  # 测试环境商户号0002900F1503036
-    'mchnt_key': '0f9ba620056511f0e56cf46e8782b98c',  # 测试环境密钥f00dac5077ea11e754e14c9541bc0170
+    'mchnt_cd': '0005810F3853XXX',  # 测试环境商户号0002900F1503036
+    'mchnt_key': '0f9ba620056511f0e56cf46e8782bXXX',  # 测试环境密钥f00dac5077ea11e754e14c9541bc0170
     'order_prefix': '17849',  # 测试环境订单前缀1066
     'notify_url': 'https://class.gzturing.com/dashboard',  # 回调地址
     # 'api_url': '',  # 测试环境下单地址https://aipaytest.fuioupay.com/aggregatePay/preCreate
@@ -57,7 +57,7 @@ FUIOU_CONFIG = {
     'api_url': 'https://aipay-fzg.fuioupay.com/aggregatePay/preCreate',  # 运营生产环境地址
     'refund_url': ' https://aipay-fzg.fuioupay.com/aggregatePay/commonRefund',  # 运营退款接口地址
     'query_url': 'https://aipay-fzg.fuioupay.com/aggregatePay/commonQuery',  # 运营订单查询地址
-    'APPID': 'wxfa089da95020ba1a',  # wx5ac8eb4651fe544f 调用2.16接口获取openid即可。
+    'APPID': 'wxfa089da95020bXXX',  # wx5ac8eb4651fe544f 调用2.16接口获取openid即可。
 }
 
 
